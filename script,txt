@@ -1,9 +1,9 @@
 --[[
-    Aimbot + ESP (Box + Tracer + Distância) + Menu Dinâmico
+    Aimbot + ESP + AntiKick Indetectável
     Créditos: JV STORE | ig: jaovt.x7
-    Melhorias: ESP universal, Blur nos créditos, botão JV arrastável, animações, sliders
+    Valores padrão ajustados, AntiKick sem propagandas.
 ]]
-local fov = 50
+local fov = 136.7               -- FOV Size padrão
 local maxTransparency = 0.1
 
 local RunService = game:GetService("RunService")
@@ -16,27 +16,128 @@ local Workspace = game.Workspace
 local localPlayer = Players.LocalPlayer
 local localChar = localPlayer.Character or localPlayer.CharacterAdded:Wait()
 
--- ===== MELHORIA 1: GUI DO BLUR PARA CRÉDITOS =====
-local blurGui = Instance.new("ScreenGui")
-blurGui.Name = "BlurCredits"
-blurGui.Parent = game:GetService("CoreGui")  -- ou PlayerGui
-blurGui.Enabled = true
+-- ===== SISTEMA DE NOTIFICAÇÕES (ScreenGui) =====
+local notificationGui = Instance.new("ScreenGui")
+notificationGui.Name = "JV_Notifications"
+notificationGui.ResetOnSpawn = false
+notificationGui.Parent = game:GetService("CoreGui")
 
-local blurFrame = Instance.new("Frame")
-blurFrame.Size = UDim2.new(1, 0, 1, 0)
-blurFrame.BackgroundTransparency = 1
-blurFrame.BackgroundColor3 = Color3.new(0, 0, 0)
-blurFrame.Parent = blurGui
+local function showNotification(text, color, duration)
+    local notifFrame = Instance.new("Frame")
+    notifFrame.Size = UDim2.new(0, 280, 0, 40)
+    notifFrame.Position = UDim2.new(0.5, -140, 0, 20)
+    notifFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    notifFrame.BorderSizePixel = 0
+    notifFrame.BackgroundTransparency = 0.1
+    notifFrame.Parent = notificationGui
 
-local blurEffect = Instance.new("BlurEffect")
-blurEffect.Size = 24
-blurEffect.Parent = blurFrame
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = notifFrame
 
--- ===== CRÉDITOS (mantido e melhorado) =====
+    local label = Instance.new("TextLabel")
+    label.Text = text
+    label.Font = Enum.Font.SourceSansSemibold
+    label.TextSize = 15
+    label.TextColor3 = color or Color3.fromRGB(255, 255, 255)
+    label.BackgroundTransparency = 1
+    label.Size = UDim2.new(1, -16, 1, 0)
+    label.Position = UDim2.new(0, 8, 0, 0)
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = notifFrame
+
+    -- Animação de entrada
+    notifFrame.Position = UDim2.new(0.5, -140, 0, -40)
+    TweenService:Create(notifFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back), {Position = UDim2.new(0.5, -140, 0, 20)}):Play()
+
+    task.delay(duration or 2, function()
+        TweenService:Create(notifFrame, TweenInfo.new(0.2), {BackgroundTransparency = 1}):Play()
+        TweenService:Create(label, TweenInfo.new(0.2), {TextTransparency = 1}):Play()
+        task.wait(0.2)
+        notifFrame:Destroy()
+    end)
+end
+
+-- ===== ANTI‑KICK (limpo, sem propagandas) =====
+local kickAvoidCount = nil
+local ac1 = nil
+
+task.spawn(function()
+    pcall(function()
+        local CoreGui = game:GetService("CoreGui")
+
+        local function createNotification(title, message)
+            local ScreenGui = Instance.new("ScreenGui")
+            ScreenGui.Name = "AntiKickNotification"
+            ScreenGui.ResetOnSpawn = false
+            ScreenGui.Parent = CoreGui
+
+            local Frame = Instance.new("Frame")
+            Frame.Size = UDim2.new(0, 250, 0, 100)
+            Frame.Position = UDim2.new(1, -260, 1, -110)
+            Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+            Frame.BorderSizePixel = 0
+            Frame.BackgroundTransparency = 0.2
+            Frame.Parent = ScreenGui
+
+            local TitleLabel = Instance.new("TextLabel")
+            TitleLabel.Text = title
+            TitleLabel.Font = Enum.Font.SourceSansBold
+            TitleLabel.TextSize = 18
+            TitleLabel.TextColor3 = Color3.fromRGB(255, 85, 0)
+            TitleLabel.BackgroundTransparency = 1
+            TitleLabel.Size = UDim2.new(1, -10, 0, 25)
+            TitleLabel.Position = UDim2.new(0, 5, 0, 5)
+            TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+            TitleLabel.Parent = Frame
+
+            local MessageLabel = Instance.new("TextLabel")
+            MessageLabel.Text = message
+            MessageLabel.Font = Enum.Font.SourceSans
+            MessageLabel.TextSize = 16
+            MessageLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+            MessageLabel.BackgroundTransparency = 1
+            MessageLabel.Size = UDim2.new(1, -10, 1, -35)
+            MessageLabel.Position = UDim2.new(0, 5, 0, 30)
+            MessageLabel.TextXAlignment = Enum.TextXAlignment.Left
+            MessageLabel.TextWrapped = true
+            MessageLabel.Parent = Frame
+
+            task.delay(4, function()
+                ScreenGui:Destroy()
+            end)
+        end
+
+        createNotification("Anti Kick Enabled", "Most powerful antikick has been enabled...")
+
+        kickAvoidCount = 0
+        pcall(function()
+            ac1 = hookmetamethod(game, "__namecall", function(self, ...)
+                local method = getnamecallmethod()
+                if method:lower() == "kick" and self == localPlayer then
+                    kickAvoidCount = kickAvoidCount + 1
+                    createNotification("Kick Prevented", "Total kicks avoided: " .. tostring(kickAvoidCount))
+                    return
+                end
+                return ac1(self, ...)
+            end)
+        end)
+        -- Créditos de terceiros e setclipboard removidos
+    end)
+end)
+
+-- ===== CRÉDITOS (Drawing, mantido original) =====
 local creditosAtivos = true
 local creditosTempo = 0
 local creditosFase = 1
-local creditosConn  -- para desconectar depois
+
+local creditBg = Drawing.new("Square")
+creditBg.Visible = false
+creditBg.Size = Cam.ViewportSize
+creditBg.Position = Vector2.new(0, 0)
+creditBg.Color = Color3.new(0, 0, 0)
+creditBg.Filled = true
+creditBg.Transparency = 1
 
 local loadingText = Drawing.new("Text")
 loadingText.Visible = true
@@ -82,6 +183,7 @@ local pontos = 0
 
 local function updateCreditosPosition()
     local vSize = Cam.ViewportSize
+    creditBg.Size = vSize
     loadingText.Position = Vector2.new(vSize.X / 2, vSize.Y / 2 - 40)
     subText.Position = Vector2.new(vSize.X / 2, vSize.Y / 2 + 10)
     creditosText.Position = Vector2.new(vSize.X / 2, vSize.Y / 2 - 20)
@@ -89,14 +191,11 @@ local function updateCreditosPosition()
 end
 updateCreditosPosition()
 
--- Desfoque inicial invisível, animamos depois
-blurEffect.Enabled = false
-
+local creditosConn
 creditosConn = RunService.RenderStepped:Connect(function()
     if not creditosAtivos then return end
     creditosTempo = creditosTempo + 0.016
 
-    -- Fase 1: loading
     if creditosFase == 1 then
         local alpha = math.min(creditosTempo / 1.0, 1)
         loadingText.Transparency = 1 - alpha
@@ -115,17 +214,21 @@ creditosConn = RunService.RenderStepped:Connect(function()
             subText.Visible = false
         end
 
-    -- Fase 2: créditos com blur
     elseif creditosFase == 2 then
         local alpha = math.min(creditosTempo / 0.8, 1)
         creditosText.Transparency = 1 - alpha
         creditosSub.Transparency = 1 - alpha
 
-        -- Ativa blur e fade in
-        if not blurEffect.Enabled then
-            blurEffect.Enabled = true
-            blurEffect.Size = 0
-            TweenService:Create(blurEffect, TweenInfo.new(0.5), {Size = 24}):Play()
+        if not creditBg.Visible then
+            creditBg.Visible = true
+            creditBg.Transparency = 1
+            local tweenAlpha = 0
+            while tweenAlpha < 0.6 do
+                tweenAlpha = tweenAlpha + 0.02
+                creditBg.Transparency = 1 - tweenAlpha
+                task.wait(0.01)
+            end
+            creditBg.Transparency = 0.4
         end
 
         if creditosTempo > 4.0 then
@@ -133,15 +236,13 @@ creditosConn = RunService.RenderStepped:Connect(function()
             creditosTempo = 0
         end
 
-    -- Fase 3: fade out créditos e blur
     elseif creditosFase == 3 then
         local alpha = math.min(creditosTempo / 0.8, 1)
         creditosText.Transparency = alpha
         creditosSub.Transparency = alpha
 
-        -- Desfoque desaparece suavemente
-        if blurEffect.Size > 0 then
-            TweenService:Create(blurEffect, TweenInfo.new(0.5), {Size = 0}):Play()
+        if creditBg.Transparency < 1 then
+            creditBg.Transparency = 0.4 + alpha * 0.6
         end
 
         if creditosTempo > 1.0 then
@@ -150,8 +251,7 @@ creditosConn = RunService.RenderStepped:Connect(function()
             creditosSub.Visible = false
             loadingText.Visible = false
             subText.Visible = false
-            blurEffect.Enabled = false
-            blurGui:Destroy()  -- limpa GUI do blur
+            creditBg:Remove()
             if creditosConn then
                 creditosConn:Disconnect()
                 creditosConn = nil
@@ -161,363 +261,481 @@ creditosConn = RunService.RenderStepped:Connect(function()
     end
 end)
 
--- ===== MELHORIA 2: INTERFACE DO MENU =====
--- Variáveis de estado (podem ser alteradas pelo menu)
+-- ===== INTERFACE GUI (ScreenGui) =====
+local menuGui = Instance.new("ScreenGui")
+menuGui.Name = "JV_Menu"
+menuGui.ResetOnSpawn = false
+menuGui.Parent = game:GetService("CoreGui")
+
+local mainFrame = Instance.new("Frame")
+mainFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+mainFrame.BackgroundTransparency = 0.05
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = menuGui
+
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, 12)
+mainCorner.Parent = mainFrame
+
+-- Título "JV Store"
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Text = "JV Store"
+titleLabel.Font = Enum.Font.SourceSansBold
+titleLabel.TextSize = 22
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Size = UDim2.new(1, 0, 0, 30)
+titleLabel.Position = UDim2.new(0, 0, 0, 10)
+titleLabel.TextXAlignment = Enum.TextXAlignment.Center
+titleLabel.Parent = mainFrame
+
+-- Créditos discretos
+local creditsSubLabel = Instance.new("TextLabel")
+creditsSubLabel.Text = "By: @jaovt.x7"
+creditsSubLabel.Font = Enum.Font.SourceSansItalic
+creditsSubLabel.TextSize = 11
+creditsSubLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+creditsSubLabel.BackgroundTransparency = 1
+creditsSubLabel.Size = UDim2.new(1, 0, 0, 16)
+creditsSubLabel.Position = UDim2.new(0, 0, 0, 38)
+creditsSubLabel.TextXAlignment = Enum.TextXAlignment.Center
+creditsSubLabel.Parent = mainFrame
+
+-- Botão minimizar
+local minimizeBtn = Instance.new("TextButton")
+minimizeBtn.Text = "—"
+minimizeBtn.Font = Enum.Font.SourceSansBold
+minimizeBtn.TextSize = 22
+minimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+minimizeBtn.BackgroundTransparency = 1
+minimizeBtn.Size = UDim2.new(0, 30, 0, 30)
+minimizeBtn.Position = UDim2.new(1, -70, 0, 8)
+minimizeBtn.Parent = mainFrame
+
+-- Botão fechar
+local closeBtn = Instance.new("TextButton")
+closeBtn.Text = "✕"
+closeBtn.Font = Enum.Font.SourceSansBold
+closeBtn.TextSize = 20
+closeBtn.TextColor3 = Color3.fromRGB(255, 80, 80)
+closeBtn.BackgroundTransparency = 1
+closeBtn.Size = UDim2.new(0, 30, 0, 30)
+closeBtn.Position = UDim2.new(1, -35, 0, 8)
+closeBtn.Parent = mainFrame
+
+-- Container para controles
+local controlsFrame = Instance.new("Frame")
+controlsFrame.BackgroundTransparency = 1
+controlsFrame.Parent = mainFrame
+
+local uiListLayout = Instance.new("UIListLayout")
+uiListLayout.Padding = UDim.new(0, 8)
+uiListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+uiListLayout.Parent = controlsFrame
+
+-- Variáveis de estado (valores padrão ajustados)
 local aimbotAtivo = true
 local espAtivo = true
 local boxAtivo = true
 local tracerAtivo = true
 local distanciaAtivo = true
-local espThickness = 1.5
-local boxThickness = 1.5
-local fovThickness = 2
+local boxOpacity = 0.4          -- padrão
+local tracerOpacity = 0.6       -- padrão
+local fovOpacity = 0.3          -- padrão
+local fovThickness = 1.5        -- padrão
 
--- Função para criar o menu só depois dos créditos
-local menuDrawings = {}
-local menuAberto = false
-local menuAnimProgress = 0
-local menuTargetSize = Vector2.new(200, 280)
-local menuBasePos = Vector2.new(50, 50)
+-- Tabela para referência de áreas interativas (para evitar arraste)
+local interactiveAreas = {}
 
--- Botão JV
-local btnJV = Drawing.new("Square")
-btnJV.Visible = false
-btnJV.Size = Vector2.new(32, 32)
-btnJV.Position = Vector2.new(30, 30)
-btnJV.Color = Color3.fromRGB(30, 30, 30)
-btnJV.Filled = true
-btnJV.Transparency = 0
+-- Função para criar um toggle (switch)
+local function createToggle(name, default, callback)
+    local toggleFrame = Instance.new("Frame")
+    toggleFrame.Size = UDim2.new(1, 0, 0, 28)
+    toggleFrame.BackgroundTransparency = 1
+    toggleFrame.Parent = controlsFrame
 
-local btnJVText = Drawing.new("Text")
-btnJVText.Visible = false
-btnJVText.Text = "JV"
-btnJVText.Size = 18
-btnJVText.Center = true
-btnJVText.Color = Color3.fromRGB(255, 255, 255)
-btnJVText.Font = 2
-btnJVText.Position = btnJV.Position + btnJV.Size/2
+    local label = Instance.new("TextLabel")
+    label.Text = name
+    label.Font = Enum.Font.SourceSans
+    label.TextSize = 14
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.BackgroundTransparency = 1
+    label.Size = UDim2.new(0, 120, 1, 0)
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = toggleFrame
 
--- Painel do menu
-local panelBg = Drawing.new("Square")
-panelBg.Visible = false
-panelBg.Size = Vector2.new(0, 0)
-panelBg.Position = btnJV.Position + Vector2.new(0, btnJV.Size.Y + 5)
-panelBg.Color = Color3.fromRGB(40, 40, 40)
-panelBg.Filled = true
-panelBg.Transparency = 0
+    local switchBg = Instance.new("Frame")
+    switchBg.Size = UDim2.new(0, 44, 0, 22)
+    switchBg.Position = UDim2.new(1, -54, 0.5, -11)
+    switchBg.BackgroundColor3 = default and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(70, 70, 70)
+    switchBg.BorderSizePixel = 0
+    switchBg.Parent = toggleFrame
+    local switchCorner = Instance.new("UICorner")
+    switchCorner.CornerRadius = UDim.new(1, 0)
+    switchCorner.Parent = switchBg
 
--- Sliders e toggles serão criados dinamicamente
-local toggleDrawings = {}
-local sliderDrawings = {}
+    local thumb = Instance.new("Frame")
+    thumb.Size = UDim2.new(0, 18, 0, 18)
+    thumb.Position = default and UDim2.new(0, 23, 0, 2) or UDim2.new(0, 2, 0, 2)
+    thumb.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    thumb.BorderSizePixel = 0
+    thumb.Parent = switchBg
+    local thumbCorner = Instance.new("UICorner")
+    thumbCorner.CornerRadius = UDim.new(1, 0)
+    thumbCorner.Parent = thumb
 
--- Função para criar um toggle (checkbox + texto)
-local function createToggle(text, defaultValue, callback)
-    local toggle = {}
-    local yOffset = #toggleDrawings * 25 + 5
+    local switchBtn = Instance.new("TextButton")
+    switchBtn.Size = UDim2.new(1, 0, 1, 0)
+    switchBtn.BackgroundTransparency = 1
+    switchBtn.Text = ""
+    switchBtn.Parent = switchBg
 
-    toggle.bg = Drawing.new("Square")
-    toggle.bg.Size = Vector2.new(16, 16)
-    toggle.bg.Position = panelBg.Position + Vector2.new(10, yOffset)
-    toggle.bg.Color = defaultValue and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(80, 80, 80)
-    toggle.bg.Filled = true
-    toggle.bg.Visible = false
+    local value = default
+    local function updateState()
+        value = not value
+        callback(value)
+        local targetPos = value and UDim2.new(0, 23, 0, 2) or UDim2.new(0, 2, 0, 2)
+        local targetColor = value and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(70, 70, 70)
+        TweenService:Create(thumb, TweenInfo.new(0.15), {Position = targetPos}):Play()
+        TweenService:Create(switchBg, TweenInfo.new(0.15), {BackgroundColor3 = targetColor}):Play()
+    end
 
-    toggle.check = Drawing.new("Square")
-    toggle.check.Size = Vector2.new(12, 12)
-    toggle.check.Position = toggle.bg.Position + Vector2.new(2, 2)
-    toggle.check.Color = Color3.fromRGB(255, 255, 255)
-    toggle.check.Filled = true
-    toggle.check.Visible = defaultValue
+    switchBtn.MouseButton1Click:Connect(updateState)
+    switchBtn.Activated:Connect(updateState)
 
-    toggle.label = Drawing.new("Text")
-    toggle.label.Text = text
-    toggle.label.Size = 14
-    toggle.label.Position = toggle.bg.Position + Vector2.new(22, -1)
-    toggle.label.Color = Color3.fromRGB(255, 255, 255)
-    toggle.label.Font = 2
-    toggle.label.Visible = false
-
-    toggle.value = defaultValue
-    toggle.callback = callback
-
-    toggle.clickArea = {  -- hitbox para clique
-        Position = toggle.bg.Position,
-        Size = Vector2.new(100, 20)  -- largura suficiente para texto
-    }
-
-    table.insert(toggleDrawings, toggle)
-    return toggle
+    -- Registra área interativa (todo o toggleFrame)
+    table.insert(interactiveAreas, toggleFrame)
+    return toggleFrame
 end
 
--- Função para criar um slider (barra + thumb)
-local function createSlider(text, min, max, initial, callback)
-    local slider = {}
-    local yOffset = #sliderDrawings * 30 + 5 + #toggleDrawings * 25 + 5
+-- Função para criar um slider
+local function createSlider(name, min, max, initial, callback)
+    local sliderFrame = Instance.new("Frame")
+    sliderFrame.Size = UDim2.new(1, 0, 0, 42)
+    sliderFrame.BackgroundTransparency = 1
+    sliderFrame.Parent = controlsFrame
 
-    slider.label = Drawing.new("Text")
-    slider.label.Text = text .. ": " .. initial
-    slider.label.Size = 14
-    slider.label.Position = panelBg.Position + Vector2.new(10, yOffset)
-    slider.label.Color = Color3.fromRGB(255, 255, 255)
-    slider.label.Font = 2
-    slider.label.Visible = false
+    local label = Instance.new("TextLabel")
+    label.Text = name .. ": " .. string.format("%.1f", initial)
+    label.Font = Enum.Font.SourceSans
+    label.TextSize = 14
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.BackgroundTransparency = 1
+    label.Size = UDim2.new(1, 0, 0, 16)
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = sliderFrame
 
-    slider.trackBg = Drawing.new("Square")
-    slider.trackBg.Size = Vector2.new(150, 6)
-    slider.trackBg.Position = slider.label.Position + Vector2.new(0, 18)
-    slider.trackBg.Color = Color3.fromRGB(80, 80, 80)
-    slider.trackBg.Filled = true
-    slider.trackBg.Visible = false
+    local trackBg = Instance.new("Frame")
+    trackBg.Size = UDim2.new(1, 0, 0, 6)
+    trackBg.Position = UDim2.new(0, 0, 0, 22)
+    trackBg.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    trackBg.BorderSizePixel = 0
+    trackBg.Parent = sliderFrame
+    local trackCorner = Instance.new("UICorner")
+    trackCorner.CornerRadius = UDim.new(0, 3)
+    trackCorner.Parent = trackBg
 
-    slider.trackFill = Drawing.new("Square")
-    slider.trackFill.Size = Vector2.new(0, 6)
-    slider.trackFill.Position = slider.trackBg.Position
-    slider.trackFill.Color = Color3.fromRGB(0, 170, 0)
-    slider.trackFill.Filled = true
-    slider.trackFill.Visible = false
+    local trackFill = Instance.new("Frame")
+    trackFill.Size = UDim2.new((initial - min) / (max - min), 0, 1, 0)
+    trackFill.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+    trackFill.BorderSizePixel = 0
+    trackFill.Parent = trackBg
+    local fillCorner = Instance.new("UICorner")
+    fillCorner.CornerRadius = UDim.new(0, 3)
+    fillCorner.Parent = trackFill
 
-    slider.thumb = Drawing.new("Square")
-    slider.thumb.Size = Vector2.new(12, 12)
-    slider.thumb.Position = slider.trackBg.Position + Vector2.new(0, -3)
-    slider.thumb.Color = Color3.fromRGB(255, 255, 255)
-    slider.thumb.Filled = true
-    slider.thumb.Visible = false
+    local thumb = Instance.new("Frame")
+    thumb.Size = UDim2.new(0, 14, 0, 14)
+    thumb.Position = UDim2.new((initial - min) / (max - min), -7, 0.5, -7)
+    thumb.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    thumb.BorderSizePixel = 0
+    thumb.Parent = trackBg
+    local thumbCorner = Instance.new("UICorner")
+    thumbCorner.CornerRadius = UDim.new(1, 0)
+    thumbCorner.Parent = thumb
 
-    slider.value = initial
-    slider.min = min
-    slider.max = max
-    slider.callback = callback
-    slider.dragging = false
+    local sliderVal = initial
 
-    -- atualiza posição do thumb
-    local function updateThumb()
-        local t = (slider.value - min) / (max - min)
-        local x = slider.trackBg.Position.X + t * slider.trackBg.Size.X
-        slider.thumb.Position = Vector2.new(x - slider.thumb.Size.X/2, slider.trackBg.Position.Y - 3)
-        slider.trackFill.Size = Vector2.new(t * slider.trackBg.Size.X, 6)
-        slider.label.Text = text .. ": " .. math.floor(slider.value * 10) / 10
-    end
-    updateThumb()
-
-    slider.updateThumb = updateThumb
-    table.insert(sliderDrawings, slider)
-    return slider
-end
-
--- Função para desenhar todos os elementos do menu
-local function renderMenu()
-    local alpha = menuAnimProgress
-    panelBg.Size = Vector2.new(
-        menuTargetSize.X * alpha,
-        menuTargetSize.Y * alpha
-    )
-    panelBg.Position = menuBasePos
-
-    -- Atualiza posições dos toggles
-    for i, toggle in ipairs(toggleDrawings) do
-        local yOff = (i-1) * 25 + 5
-        toggle.bg.Position = panelBg.Position + Vector2.new(10, yOff)
-        toggle.check.Position = toggle.bg.Position + Vector2.new(2, 2)
-        toggle.label.Position = toggle.bg.Position + Vector2.new(22, -1)
-        toggle.clickArea.Position = toggle.bg.Position
-        toggle.bg.Visible = alpha > 0 and menuAberto
-        toggle.check.Visible = toggle.value and alpha > 0 and menuAberto
-        toggle.label.Visible = alpha > 0 and menuAberto
+    local function setValue(xFraction)
+        local val = min + xFraction * (max - min)
+        val = math.clamp(val, min, max)
+        sliderVal = val
+        label.Text = name .. ": " .. string.format("%.1f", val)
+        trackFill.Size = UDim2.new((val - min) / (max - min), 0, 1, 0)
+        thumb.Position = UDim2.new((val - min) / (max - min), -7, 0.5, -7)
+        callback(val)
     end
 
-    -- Atualiza posições dos sliders
-    local sliderBaseY = #toggleDrawings * 25 + 10
-    for i, slider in ipairs(sliderDrawings) do
-        local yOff = sliderBaseY + (i-1) * 35
-        slider.label.Position = panelBg.Position + Vector2.new(10, yOff)
-        slider.trackBg.Position = slider.label.Position + Vector2.new(0, 18)
-        slider.trackFill.Position = slider.trackBg.Position
-        local t = (slider.value - slider.min) / (slider.max - slider.min)
-        local x = slider.trackBg.Position.X + t * slider.trackBg.Size.X
-        slider.thumb.Position = Vector2.new(x - slider.thumb.Size.X/2, slider.trackBg.Position.Y - 3)
-        slider.trackFill.Size = Vector2.new(t * slider.trackBg.Size.X, 6)
-        slider.label.Visible = alpha > 0 and menuAberto
-        slider.trackBg.Visible = alpha > 0 and menuAberto
-        slider.trackFill.Visible = alpha > 0 and menuAberto
-        slider.thumb.Visible = alpha > 0 and menuAberto
-        slider.label.Text = slider.label.Text:gsub("%:.*", ": " .. math.floor(slider.value * 10) / 10)
+    local dragging = false
+    local function updateFromMouse(input)
+        local mousePos = input.Position
+        local relativeX = mousePos.X - trackBg.AbsolutePosition.X
+        local fraction = math.clamp(relativeX / trackBg.AbsoluteSize.X, 0, 1)
+        setValue(fraction)
     end
-end
 
--- Criação dos toggles
-local toggleAimbot = createToggle("Aimbot", true, function(val) aimbotAtivo = val end)
-local toggleESP    = createToggle("ESP", true, function(val) espAtivo = val end)
-local toggleBox    = createToggle("Box", true, function(val) boxAtivo = val end)
-local toggleTracer = createToggle("Tracer", true, function(val) tracerAtivo = val end)
-local toggleDist   = createToggle("Distância", true, function(val) distanciaAtivo = val end)
-
--- Criação dos sliders
-local sliderFOV = createSlider("FOV", 10, 200, fov, function(val)
-    fov = val
-    if FOVring then FOVring.Radius = val end
-end)
-local sliderESPThick = createSlider("ESP Thickness", 0.5, 5, espThickness, function(val)
-    espThickness = val
-    -- Aplica a todos os desenhos ESP ativos
-    for _, data in pairs(espObjects) do
-        if data.box then data.box.Thickness = val end
-        if data.tracer then data.tracer.Thickness = val end
-    end
-end)
-local sliderBoxThick = createSlider("Box Thickness", 0.5, 5, boxThickness, function(val)
-    boxThickness = val
-    for _, data in pairs(espObjects) do
-        if data.box then data.box.Thickness = val end
-    end
-end)
-local sliderFOVThick = createSlider("FOV Thickness", 1, 6, fovThickness, function(val)
-    fovThickness = val
-    if FOVring then FOVring.Thickness = val end
-end)
-
--- Estado de arraste do botão JV
-local draggingBtn = false
-local dragStart = nil
-local btnStartPos = nil
-
--- Conexão de entrada para menu (será ativada após créditos)
-local menuInputConn
-
-local function setupMenuInput()
-    menuInputConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
-        if gameProcessed then return end
-
-        local mousePos = UserInputService:GetMouseLocation()
-
-        -- Clique no botão JV
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            local btnBounds = {Position = btnJV.Position, Size = btnJV.Size}
-            if mousePos.X >= btnBounds.Position.X and mousePos.X <= btnBounds.Position.X + btnBounds.Size.X and
-               mousePos.Y >= btnBounds.Position.Y and mousePos.Y <= btnBounds.Position.Y + btnBounds.Size.Y then
-                menuAberto = not menuAberto
-                if menuAberto then
-                    -- animação de abertura
-                    menuAnimProgress = 0
-                    spawn(function()
-                        for i = 0, 1, 0.1 do
-                            menuAnimProgress = i
-                            renderMenu()
-                            wait(0.02)
-                        end
-                        menuAnimProgress = 1
-                        renderMenu()
-                    end)
-                else
-                    -- animação de fechamento
-                    menuAnimProgress = 1
-                    spawn(function()
-                        for i = 1, 0, -0.1 do
-                            menuAnimProgress = i
-                            renderMenu()
-                            wait(0.02)
-                        end
-                        menuAnimProgress = 0
-                        renderMenu()
-                    end)
-                end
-                return
-            end
-
-            -- Verifica toggles
-            if menuAberto then
-                for _, toggle in ipairs(toggleDrawings) do
-                    local a = toggle.clickArea
-                    if mousePos.X >= a.Position.X and mousePos.X <= a.Position.X + a.Size.X and
-                       mousePos.Y >= a.Position.Y and mousePos.Y <= a.Position.Y + a.Size.Y then
-                        toggle.value = not toggle.value
-                        toggle.check.Visible = toggle.value
-                        toggle.bg.Color = toggle.value and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(80, 80, 80)
-                        if toggle.callback then toggle.callback(toggle.value) end
-                        return
-                    end
-                end
-
-                -- Verifica sliders (início de arraste)
-                for _, slider in ipairs(sliderDrawings) do
-                    if slider.trackBg.Visible then
-                        local trackPos = slider.trackBg.Position
-                        local trackSize = slider.trackBg.Size
-                        if mousePos.Y >= trackPos.Y - 5 and mousePos.Y <= trackPos.Y + trackSize.Y + 5 and
-                           mousePos.X >= trackPos.X and mousePos.X <= trackPos.X + trackSize.X then
-                            slider.dragging = true
-                            -- atualiza valor imediatamente
-                            local relX = math.clamp(mousePos.X - trackPos.X, 0, trackSize.X)
-                            local t = relX / trackSize.X
-                            slider.value = slider.min + t * (slider.max - slider.min)
-                            slider.updateThumb()
-                            if slider.callback then slider.callback(slider.value) end
-                            return
-                        end
-                    end
-                end
-            end
-
-            -- Início de arraste do botão
-            local btnBounds = {Position = btnJV.Position, Size = btnJV.Size}
-            if mousePos.X >= btnBounds.Position.X and mousePos.X <= btnBounds.Position.X + btnBounds.Size.X and
-               mousePos.Y >= btnBounds.Position.Y and mousePos.Y <= btnBounds.Position.Y + btnBounds.Size.Y then
-                draggingBtn = true
-                dragStart = mousePos
-                btnStartPos = btnJV.Position
-            end
+    thumb.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            updateFromMouse(input)
+        end
+    end)
+    trackBg.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            updateFromMouse(input)
         end
     end)
 
-    UserInputService.InputChanged:Connect(function(input, gameProcessed)
-        if input.UserInputType == Enum.UserInputType.MouseMovement then
-            local mousePos = UserInputService:GetMouseLocation()
-            -- Arrastar botão
-            if draggingBtn then
-                local delta = mousePos - dragStart
-                btnJV.Position = btnStartPos + delta
-                btnJVText.Position = btnJV.Position + btnJV.Size/2
-                menuBasePos = btnJV.Position + Vector2.new(0, btnJV.Size.Y + 5)
-                renderMenu()
-            end
-
-            -- Arrastar sliders
-            for _, slider in ipairs(sliderDrawings) do
-                if slider.dragging then
-                    local relX = math.clamp(mousePos.X - slider.trackBg.Position.X, 0, slider.trackBg.Size.X)
-                    local t = relX / slider.trackBg.Size.X
-                    slider.value = slider.min + t * (slider.max - slider.min)
-                    slider.updateThumb()
-                    if slider.callback then slider.callback(slider.value) end
-                end
-            end
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            updateFromMouse(input)
         end
     end)
 
     UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            draggingBtn = false
-            for _, slider in ipairs(sliderDrawings) do
-                slider.dragging = false
-            end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
         end
     end)
+
+    -- Registra como área interativa
+    table.insert(interactiveAreas, sliderFrame)
+    return sliderFrame
 end
 
--- ===== FIM MELHORIA DO MENU =====
+-- Criação dos controles (todos switches ligados por padrão)
+createToggle("Aimbot", true, function(val) aimbotAtivo = val end)
+createToggle("ESP", true, function(val) espAtivo = val end)
+createToggle("Box", true, function(val) boxAtivo = val end)
+createToggle("Tracer", true, function(val) tracerAtivo = val end)
+createToggle("Distância", true, function(val) distanciaAtivo = val end)
 
--- ===== SCRIPT PRINCIPAL (mantido e melhorado) =====
+-- Sliders com os novos valores padrão
+createSlider("FOV Size", 10, 200, fov, function(val)
+    fov = val
+    if FOVring then FOVring.Radius = val end
+end)
+createSlider("FOV Visibility", 0, 1, fovOpacity, function(val)
+    fovOpacity = val
+end)
+createSlider("FOV Thickness", 1, 6, fovThickness, function(val)
+    fovThickness = val
+    if FOVring then FOVring.Thickness = val end
+end)
+createSlider("Box Visibility", 0, 1, boxOpacity, function(val)
+    boxOpacity = val
+end)
+createSlider("Tracer Visibility", 0, 1, tracerOpacity, function(val)
+    tracerOpacity = val
+end)
+
+-- Ajusta tamanho do painel conforme o conteúdo
+local function updatePanelSize()
+    local togglesCount = 5
+    local slidersCount = 5
+    local toggleHeight = 28
+    local sliderHeight = 42
+    local padding = 8
+    local titleHeight = 56  -- título + subtítulo
+    local topMargin = 8
+    local bottomMargin = 12
+    local contentHeight = (togglesCount * toggleHeight) + (slidersCount * sliderHeight) + ((togglesCount + slidersCount - 1) * padding)
+    local totalHeight = titleHeight + contentHeight + topMargin + bottomMargin
+    mainFrame.Size = UDim2.new(0, 230, 0, totalHeight)
+    controlsFrame.Size = UDim2.new(1, -20, 0, contentHeight)
+    controlsFrame.Position = UDim2.new(0, 10, 0, titleHeight + topMargin)
+end
+updatePanelSize()
+
+-- Funcionalidade de minimizar/expandir
+local expandedSize = mainFrame.Size
+local collapsedSize = UDim2.new(0, 32, 0, 32)
+local expandedPos = UDim2.new(0.5, -115, 0, 42)
+local collapsedPos = UDim2.new(0.5, -16, 0, 10)
+
+local menuCollapsed = false
+local menuAnimating = false
+
+local function setCollapsed(collapsed, instant)
+    if menuAnimating and not instant then return end
+    menuAnimating = true
+
+    local targetSize = collapsed and collapsedSize or expandedSize
+    local targetPos = collapsed and collapsedPos or expandedPos
+
+    -- Visibilidade dos controles
+    for _, child in ipairs(controlsFrame:GetChildren()) do
+        if child:IsA("Frame") or child:IsA("GuiObject") then
+            child.Visible = not collapsed
+        end
+    end
+    minimizeBtn.Visible = not collapsed
+    closeBtn.Visible = not collapsed
+    creditsSubLabel.Visible = not collapsed
+    titleLabel.Text = collapsed and "JV" or "JV Store"
+
+    if instant then
+        mainFrame.Size = targetSize
+        mainFrame.Position = targetPos
+        menuCollapsed = collapsed
+        menuAnimating = false
+    else
+        TweenService:Create(mainFrame, TweenInfo.new(0.15), {Size = targetSize, Position = targetPos}):Play()
+        task.wait(0.15)
+        menuCollapsed = collapsed
+        menuAnimating = false
+    end
+end
+
+minimizeBtn.MouseButton1Click:Connect(function()
+    setCollapsed(true, false)
+end)
+minimizeBtn.Activated:Connect(function()
+    setCollapsed(true, false)
+end)
+
+closeBtn.MouseButton1Click:Connect(function()
+    -- Janela de confirmação
+    local confirmGui = Instance.new("ScreenGui")
+    confirmGui.Parent = game:GetService("CoreGui")
+    local confirmFrame = Instance.new("Frame")
+    confirmFrame.Size = UDim2.new(0, 240, 0, 100)
+    confirmFrame.Position = UDim2.new(0.5, -120, 0.5, -50)
+    confirmFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+    confirmFrame.BackgroundTransparency = 0.05
+    confirmFrame.BorderSizePixel = 0
+    confirmFrame.Parent = confirmGui
+    local confirmCorner = Instance.new("UICorner")
+    confirmCorner.CornerRadius = UDim.new(0, 12)
+    confirmCorner.Parent = confirmFrame
+
+    local confirmText = Instance.new("TextLabel")
+    confirmText.Text = "Deseja realmente finalizar o script?"
+    confirmText.Font = Enum.Font.SourceSans
+    confirmText.TextSize = 16
+    confirmText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    confirmText.BackgroundTransparency = 1
+    confirmText.Size = UDim2.new(1, 0, 0, 40)
+    confirmText.Position = UDim2.new(0, 0, 0, 15)
+    confirmText.TextXAlignment = Enum.TextXAlignment.Center
+    confirmText.Parent = confirmFrame
+
+    local yesBtn = Instance.new("TextButton")
+    yesBtn.Text = "Confirmar"
+    yesBtn.Font = Enum.Font.SourceSansBold
+    yesBtn.TextSize = 16
+    yesBtn.TextColor3 = Color3.fromRGB(255, 80, 80)
+    yesBtn.BackgroundTransparency = 1
+    yesBtn.Size = UDim2.new(0, 80, 0, 30)
+    yesBtn.Position = UDim2.new(0, 30, 0, 60)
+    yesBtn.Parent = confirmFrame
+
+    local noBtn = Instance.new("TextButton")
+    noBtn.Text = "Cancelar"
+    noBtn.Font = Enum.Font.SourceSansBold
+    noBtn.TextSize = 16
+    noBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    noBtn.BackgroundTransparency = 1
+    noBtn.Size = UDim2.new(0, 80, 0, 30)
+    noBtn.Position = UDim2.new(0, 130, 0, 60)
+    noBtn.Parent = confirmFrame
+
+    local function closeConfirm(result)
+        confirmGui:Destroy()
+        if result then
+            fullCleanup()
+        end
+    end
+    yesBtn.MouseButton1Click:Connect(function() closeConfirm(true) end)
+    noBtn.MouseButton1Click:Connect(function() closeConfirm(false) end)
+    yesBtn.Activated:Connect(function() closeConfirm(true) end)
+    noBtn.Activated:Connect(function() closeConfirm(false) end)
+end)
+closeBtn.Activated:Connect(function() closeBtn.MouseButton1Click:Fire() end)
+
+-- Sistema de arraste (evita conflito com controles)
+local draggingMenu = false
+local dragStartPos = nil
+local dragStartFrame = nil
+local isDrag = false
+local minDragDistance = 3
+
+local function isMouseOverInteractive(mousePos)
+    for _, area in ipairs(interactiveAreas) do
+        if area.Visible and area.AbsolutePosition and area.AbsoluteSize then
+            local pos = area.AbsolutePosition
+            local size = area.AbsoluteSize
+            if mousePos.X >= pos.X and mousePos.X <= pos.X + size.X and
+               mousePos.Y >= pos.Y and mousePos.Y <= pos.Y + size.Y then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+local function startDrag(input)
+    if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+        local mousePos = input.Position
+        -- Se o clique for sobre um controle interativo, não inicia arraste
+        if isMouseOverInteractive(mousePos) then
+            draggingMenu = false
+            return
+        end
+        draggingMenu = true
+        isDrag = false
+        dragStartPos = mousePos
+        dragStartFrame = mainFrame.Position
+    end
+end
+
+mainFrame.InputBegan:Connect(startDrag)
+
+UserInputService.InputChanged:Connect(function(input)
+    if draggingMenu and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStartPos
+        if delta.Magnitude > minDragDistance then
+            isDrag = true
+        end
+        if isDrag then
+            local newPos = UDim2.new(dragStartFrame.X.Scale, dragStartFrame.X.Offset + delta.X,
+                                    dragStartFrame.Y.Scale, dragStartFrame.Y.Offset + delta.Y)
+            mainFrame.Position = newPos
+            if menuCollapsed then
+                collapsedPos = newPos
+            else
+                expandedPos = newPos
+            end
+        end
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        if draggingMenu and not isDrag then
+            if menuCollapsed then
+                setCollapsed(false, false)
+            end
+        end
+        draggingMenu = false
+        isDrag = false
+    end
+end)
+
+-- Inicia expandido
+setCollapsed(false, true)
+
+-- ===== SCRIPT PRINCIPAL =====
 local scriptIniciado = false
-local mainLoopConn  -- para desconectar quando deletar
+local mainLoopConn
+local FOVring = nil
+local espObjects = {}
 
 function iniciarScript()
     if scriptIniciado then return end
     scriptIniciado = true
-
-    -- Ativar botão e menu
-    btnJV.Visible = true
-    btnJVText.Visible = true
-    menuBasePos = btnJV.Position + Vector2.new(0, btnJV.Size.Y + 5)
-    setupMenuInput()
 
     local FOVring = Drawing.new("Circle")
     FOVring.Visible = true
@@ -533,7 +751,6 @@ function iniciarScript()
         FOVring.Thickness = fovThickness
     end
 
-    -- Visibilidade com Raycast (mantida)
     local function isPlayerVisible(player)
         local char = player.Character
         if not char then return false end
@@ -581,9 +798,6 @@ function iniciarScript()
         return nearest
     end
 
-    -- ===== ESP (melhorado para universal) =====
-    local espObjects = {}
-
     local function createESP(player)
         if espObjects[player] then return end
         local data = {
@@ -592,15 +806,15 @@ function iniciarScript()
             distanceText = Drawing.new("Text")
         }
         data.box.Visible = false
-        data.box.Thickness = boxThickness
+        data.box.Thickness = 1.5
         data.box.Color = Color3.fromRGB(0, 255, 0)
-        data.box.Transparency = 0.3
+        data.box.Transparency = 1 - boxOpacity
         data.box.Filled = false
 
         data.tracer.Visible = false
-        data.tracer.Thickness = espThickness
+        data.tracer.Thickness = 1.5
         data.tracer.Color = Color3.fromRGB(255, 255, 255)
-        data.tracer.Transparency = 0.3
+        data.tracer.Transparency = 1 - tracerOpacity
 
         data.distanceText.Visible = false
         data.distanceText.Size = 14
@@ -624,7 +838,6 @@ function iniciarScript()
 
     local function updateESP()
         if not espAtivo then
-            -- Oculta tudo
             for _, data in pairs(espObjects) do
                 data.box.Visible = false
                 data.tracer.Visible = false
@@ -644,7 +857,6 @@ function iniciarScript()
             end
 
             local head = char:FindFirstChild("Head")
-            -- Torso universal: procura R6, R15 e custom
             local torso = char:FindFirstChild("Torso") 
                        or char:FindFirstChild("UpperTorso") 
                        or char:FindFirstChild("LowerTorso") 
@@ -661,23 +873,20 @@ function iniciarScript()
                     local centerX = headPos.X
                     local centerY = (headPos.Y + torsoPos.Y) / 2
 
-                    -- Box
                     data.box.Visible = boxAtivo
                     if boxAtivo then
                         data.box.Size = Vector2.new(width, height)
                         data.box.Position = Vector2.new(centerX - width/2, centerY - height/2)
-                        data.box.Thickness = boxThickness
+                        data.box.Transparency = 1 - boxOpacity
                     end
 
-                    -- Tracer
                     data.tracer.Visible = tracerAtivo
                     if tracerAtivo then
                         data.tracer.From = bottomCenter
                         data.tracer.To = Vector2.new(headPos.X, headPos.Y)
-                        data.tracer.Thickness = espThickness
+                        data.tracer.Transparency = 1 - tracerOpacity
                     end
 
-                    -- Distância
                     data.distanceText.Visible = distanciaAtivo
                     if distanciaAtivo then
                         data.distanceText.Text = tostring(distance) .. "m"
@@ -692,22 +901,17 @@ function iniciarScript()
                 data.box.Visible = false
                 data.tracer.Visible = false
                 data.distanceText.Visible = false
-                -- Aguarda partes carregarem (Head pode spawnar depois)
             end
         end
     end
 
-    -- Gerenciamento de jogadores (com correção para respawn)
     local function setupPlayer(player)
         if player == localPlayer then return end
-        -- Remove ESP anterior se houver (para limpar ao respawnar)
         player.CharacterAdded:Connect(function()
             removeESP(player)
             createESP(player)
         end)
-        if player.Character then
-            createESP(player)
-        end
+        if player.Character then createESP(player) end
     end
 
     for _, player in ipairs(Players:GetPlayers()) do setupPlayer(player) end
@@ -715,31 +919,44 @@ function iniciarScript()
     Players.PlayerRemoving:Connect(removeESP)
     localPlayer.CharacterAdded:Connect(function(char) localChar = char end)
 
-    -- Tecla DELETE (corrigida para desconectar tudo)
-    local function fullCleanup()
-        -- Desconecta loops
+    -- Sequência de notificações com verificação real
+    task.spawn(function()
+        showNotification("🟨 Carregando Script...", Color3.fromRGB(255, 255, 0), 2)
+        task.wait(2.5)
+
+        local antiKickOk = (kickAvoidCount ~= nil)
+        if antiKickOk then
+            showNotification("🟩 Anti Kick ativado com sucesso.", Color3.fromRGB(0, 255, 0), 2)
+        else
+            showNotification("🟥 Falha no Anti Kick.", Color3.fromRGB(255, 0, 0), 3)
+        end
+        task.wait(2.5)
+
+        showNotification("🟩 Menu JV Store carregado.", Color3.fromRGB(0, 255, 0), 2)
+        task.wait(2.5)
+
+        showNotification("🟨 Verificando recursos...", Color3.fromRGB(255, 255, 0), 2)
+        task.wait(2.5)
+
+        local allReady = (FOVring and espObjects and mainLoopConn)
+        if allReady then
+            showNotification("🟩 Verificação concluída.", Color3.fromRGB(0, 255, 0), 2)
+            task.wait(2.5)
+            showNotification("🟩 Script iniciado com sucesso.", Color3.fromRGB(0, 255, 0), 2)
+        else
+            showNotification("🟥 Erro na verificação de recursos.", Color3.fromRGB(255, 0, 0), 3)
+        end
+    end)
+
+    -- Limpeza total
+    function fullCleanup()
         if mainLoopConn then mainLoopConn:Disconnect(); mainLoopConn = nil end
-        if menuInputConn then menuInputConn:Disconnect(); menuInputConn = nil end
         if FOVring then FOVring:Remove() end
-        for player, data in pairs(espObjects) do
-            removeESP(player)
-        end
+        for player, data in pairs(espObjects) do removeESP(player) end
         espObjects = {}
-        -- Remove menu
-        for _, toggle in ipairs(toggleDrawings) do
-            toggle.bg:Remove(); toggle.check:Remove(); toggle.label:Remove()
-        end
-        toggleDrawings = {}
-        for _, slider in ipairs(sliderDrawings) do
-            slider.label:Remove(); slider.trackBg:Remove(); slider.trackFill:Remove(); slider.thumb:Remove()
-        end
-        sliderDrawings = {}
-        btnJV:Remove()
-        btnJVText:Remove()
-        panelBg:Remove()
-        -- Limpa créditos se ainda existirem
-        loadingText:Remove(); subText:Remove(); creditosText:Remove(); creditosSub:Remove()
-        if blurGui then blurGui:Destroy() end
+        menuGui:Destroy()
+        notificationGui:Destroy()
+        pcall(function() loadingText:Remove(); subText:Remove(); creditosText:Remove(); creditosSub:Remove(); creditBg:Remove() end)
     end
 
     UserInputService.InputBegan:Connect(function(input)
@@ -752,47 +969,38 @@ function iniciarScript()
     mainLoopConn = RunService.RenderStepped:Connect(function()
         updateDrawings()
 
+        local baseTransparency = 1 - fovOpacity
         if aimbotAtivo then
             local closest = getClosestPlayerInFOV("Head")
             if closest and closest.Character and closest.Character:FindFirstChild("Head") then
                 if isPlayerVisible(closest) then
                     lookAt(closest.Character.Head.Position)
                 end
-            end
-
-            if closest and closest.Character and closest.Character:FindFirstChild("Head") then
                 local ePos, isVis = Cam:WorldToViewportPoint(closest.Character.Head.Position)
                 if isVis then
                     local dist = (Vector2.new(ePos.x, ePos.y) - Cam.ViewportSize / 2).Magnitude
-                    FOVring.Transparency = (1 - (dist / fov)) * maxTransparency
+                    FOVring.Transparency = math.clamp(baseTransparency + (1 - (dist / fov)) * maxTransparency, 0, 1)
                 else
-                    FOVring.Transparency = 0.1
+                    FOVring.Transparency = baseTransparency
                 end
             else
-                FOVring.Transparency = 0.1
+                FOVring.Transparency = baseTransparency
             end
         else
-            FOVring.Transparency = 0.1
+            FOVring.Transparency = baseTransparency
         end
 
         updateESP()
-        renderMenu()
     end)
 end
 
--- Se apertar Delete durante os créditos, inicia o script imediatamente (com cleanup)
+-- Delete durante os créditos
 UserInputService.InputBegan:Connect(function(input)
     if input.KeyCode == Enum.KeyCode.Delete and not scriptIniciado then
         creditosAtivos = false
-        loadingText.Visible = false
-        subText.Visible = false
-        creditosText.Visible = false
-        creditosSub.Visible = false
-        if blurGui then blurGui:Destroy() end
-        if creditosConn then
-            creditosConn:Disconnect()
-            creditosConn = nil
-        end
+        loadingText:Remove(); subText:Remove(); creditosText:Remove(); creditosSub:Remove()
+        creditBg:Remove()
+        if creditosConn then creditosConn:Disconnect(); creditosConn = nil end
         iniciarScript()
     end
 end)
