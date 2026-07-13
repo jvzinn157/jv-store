@@ -1,7 +1,7 @@
 --[[
     Aimbot + ESP + AntiKick Indetectável
     Créditos: JV STORE | ig: jaovt.x7
-    Validação do Anti‑Kick corrigida – estado reconhecido pelo menu.
+    Anti‑Kick com notificação exclusiva, estado reconhecido pelo menu.
 ]]
 local fov = 136.7
 local maxTransparency = 0.1
@@ -57,84 +57,21 @@ local function showNotification(text, color, duration)
     end)
 end
 
--- ===== ANTI‑KICK (instalação única, estado confirmado) =====
-local kickAvoidCount = nil
+-- ===== ANTI‑KICK (código exato fornecido, com flag de estado) =====
+local kickAvoidCount = 0
 local ac1 = nil
 local antiKickReady = false
-local antiKickTentativas = 0   -- evita laço infinito
 
-local function instalarHookAntiKick()
-    if antiKickReady then return true end
-    antiKickTentativas = antiKickTentativas + 1
-    if antiKickTentativas > 10 then return false end  -- limite de tentativas
-
-    local sucesso = pcall(function()
-        kickAvoidCount = 0
-        ac1 = hookmetamethod(game, "__namecall", function(self, ...)
-            local method = getnamecallmethod()
-            if method:lower() == "kick" and self == localPlayer then
-                kickAvoidCount = kickAvoidCount + 1
-                -- Notificação visual opcional (usa o mesmo sistema)
-                local CoreGui = game:GetService("CoreGui")
-                local ScreenGui = Instance.new("ScreenGui")
-                ScreenGui.Name = "AntiKickNotification"
-                ScreenGui.ResetOnSpawn = false
-                ScreenGui.Parent = CoreGui
-                local Frame = Instance.new("Frame")
-                Frame.Size = UDim2.new(0, 250, 0, 100)
-                Frame.Position = UDim2.new(1, -260, 1, -110)
-                Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-                Frame.BorderSizePixel = 0
-                Frame.BackgroundTransparency = 0.2
-                Frame.Parent = ScreenGui
-                local TitleLabel = Instance.new("TextLabel")
-                TitleLabel.Text = "Kick Prevented"
-                TitleLabel.Font = Enum.Font.SourceSansBold
-                TitleLabel.TextSize = 18
-                TitleLabel.TextColor3 = Color3.fromRGB(255, 85, 0)
-                TitleLabel.BackgroundTransparency = 1
-                TitleLabel.Size = UDim2.new(1, -10, 0, 25)
-                TitleLabel.Position = UDim2.new(0, 5, 0, 5)
-                TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-                TitleLabel.Parent = Frame
-                local MessageLabel = Instance.new("TextLabel")
-                MessageLabel.Text = "Total kicks avoided: " .. tostring(kickAvoidCount)
-                MessageLabel.Font = Enum.Font.SourceSans
-                MessageLabel.TextSize = 16
-                MessageLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-                MessageLabel.BackgroundTransparency = 1
-                MessageLabel.Size = UDim2.new(1, -10, 1, -35)
-                MessageLabel.Position = UDim2.new(0, 5, 0, 30)
-                MessageLabel.TextXAlignment = Enum.TextXAlignment.Left
-                MessageLabel.TextWrapped = true
-                MessageLabel.Parent = Frame
-                task.delay(4, function() ScreenGui:Destroy() end)
-                return
-            end
-            return ac1(self, ...)
-        end)
-    end)
-
-    if sucesso and ac1 then
-        antiKickReady = true
-        return true
-    else
-        kickAvoidCount = nil
-        ac1 = nil
-        return false
-    end
-end
-
--- Inicia a primeira tentativa imediatamente
 task.spawn(function()
-    if instalarHookAntiKick() then
-        -- Após instalação bem‑sucedida, exibe as notificações personalizadas (somente uma vez)
+    pcall(function()
         local CoreGui = game:GetService("CoreGui")
+
         local function createNotification(title, message)
             local ScreenGui = Instance.new("ScreenGui")
             ScreenGui.Name = "AntiKickNotification"
             ScreenGui.ResetOnSpawn = false
             ScreenGui.Parent = CoreGui
+
             local Frame = Instance.new("Frame")
             Frame.Size = UDim2.new(0, 250, 0, 100)
             Frame.Position = UDim2.new(1, -260, 1, -110)
@@ -142,6 +79,7 @@ task.spawn(function()
             Frame.BorderSizePixel = 0
             Frame.BackgroundTransparency = 0.2
             Frame.Parent = ScreenGui
+
             local TitleLabel = Instance.new("TextLabel")
             TitleLabel.Text = title
             TitleLabel.Font = Enum.Font.SourceSansBold
@@ -152,6 +90,7 @@ task.spawn(function()
             TitleLabel.Position = UDim2.new(0, 5, 0, 5)
             TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
             TitleLabel.Parent = Frame
+
             local MessageLabel = Instance.new("TextLabel")
             MessageLabel.Text = message
             MessageLabel.Font = Enum.Font.SourceSans
@@ -163,15 +102,34 @@ task.spawn(function()
             MessageLabel.TextXAlignment = Enum.TextXAlignment.Left
             MessageLabel.TextWrapped = true
             MessageLabel.Parent = Frame
-            task.delay(4, function() ScreenGui:Destroy() end)
+
+            task.delay(4, function()
+                ScreenGui:Destroy()
+            end)
         end
+
         createNotification("Anti Kick Enabled", "Most powerful antikick has been enabled...")
-        task.wait(0.5)
-        createNotification("Thanks to a creator", "Thanks to @ojoaovictorbjj")
+
+        kickAvoidCount = 0
+        ac1 = hookmetamethod(game, "__namecall", function(self, ...)
+            local method = getnamecallmethod()
+            if method:lower() == "kick" and self == localPlayer then
+                kickAvoidCount += 1
+                createNotification("Kick Prevented", "Total kicks avoided: " .. tostring(kickAvoidCount))
+                return
+            end
+            return ac1(self, ...)
+        end)
+
+        -- Sinaliza que o Anti‑Kick está ativo (usado pelo menu e pela seção Informações)
+        antiKickReady = true
+
+        createNotification("Thanks to a creator", "Thanks to @ojoaovictorbjj ")
+
         task.wait(4)
         createNotification("Follow on Instagram", "Profile handle copied to clipboard")
-        pcall(function() setclipboard("ig: @ojoaovictorbjj") end)
-    end
+        setclipboard("ig: @ojoaovictorbjj")
+    end)
 end)
 
 -- ===== CRÉDITOS (Drawing) =====
@@ -651,10 +609,10 @@ local function updateInfoStatus()
         statusLabels["Menu"].Text = "🟡 Menu: Inicializando..."
     end
 
-    -- Anti Kick – lê a flag global (agora garantida)
+    -- Anti Kick – agora reconhece a flag definida pelo próprio loader
     if antiKickReady then
         statusLabels["Anti Kick"].Text = "🟢 Anti Kick: Ativado"
-    elseif kickAvoidCount == nil then
+    elseif kickAvoidCount == 0 then
         statusLabels["Anti Kick"].Text = "🟡 Anti Kick: Inicializando..."
     else
         statusLabels["Anti Kick"].Text = "🔴 Anti Kick: Erro"
@@ -709,15 +667,11 @@ local function updateInfoStatus()
     end
 end
 
--- Sistema de tentativas (não faz nada se antiKickReady)
+-- Sistema de tentativas automáticas (executa em segundo plano)
 local function monitorAndRetry()
-    if not antiKickReady and kickAvoidCount == nil then
-        -- Tenta novamente, mas apenas se ainda não estiver pronto
-        task.spawn(function()
-            if instalarHookAntiKick() then
-                -- Se conseguiu, exibe as notificações (a função já cuida disso uma vez)
-            end
-        end)
+    -- Não tenta reiniciar se antiKickReady já for true
+    if not antiKickReady and kickAvoidCount == 0 then
+        -- Se ainda não ativou, o próprio loader já cuida (nada a fazer)
     end
     if not menuReady and scriptIniciado then
         menuReady = true
@@ -1127,23 +1081,17 @@ function iniciarScript()
     distanciaReady = true
     fovReady = true
 
-    -- Sequência de notificações única, aguardando o Anti‑Kick
+    -- Notificações principais (sem duplicar a do Anti‑Kick)
     task.spawn(function()
         showNotification("🟨 Carregando Script...", Color3.fromRGB(255, 255, 0), 2)
         task.wait(2.5)
 
-        -- Aguarda até 10 segundos pelo Anti‑Kick
-        local espera = 0
-        while not antiKickReady and espera < 10 do
+        -- Aguarda o Anti‑Kick estar pronto (já estará, pois foi inicializado antes)
+        while not antiKickReady do
             task.wait(0.5)
-            espera = espera + 0.5
         end
-        if antiKickReady then
-            showNotification("🟩 Anti Kick ativado com sucesso.", Color3.fromRGB(0, 255, 0), 2)
-        else
-            showNotification("🟥 Falha no Anti Kick.", Color3.fromRGB(255, 0, 0), 3)
-        end
-        task.wait(2.5)
+        -- Não exibe notificação extra; a do loader já apareceu
+        task.wait(1)
 
         showNotification("🟩 Menu JV Store carregado.", Color3.fromRGB(0, 255, 0), 2)
         task.wait(2.5)
