@@ -1,9 +1,9 @@
 --[[
     Aimbot + ESP + AntiKick Indetectável
     Créditos: JV STORE | ig: jaovt.x7
-    Valores padrão ajustados, AntiKick sem propagandas.
+    Validação do Anti‑Kick corrigida – estado reconhecido pelo menu.
 ]]
-local fov = 136.7               -- FOV Size padrão
+local fov = 136.7
 local maxTransparency = 0.1
 
 local RunService = game:GetService("RunService")
@@ -46,7 +46,6 @@ local function showNotification(text, color, duration)
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = notifFrame
 
-    -- Animação de entrada
     notifFrame.Position = UDim2.new(0.5, -140, 0, -40)
     TweenService:Create(notifFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back), {Position = UDim2.new(0.5, -140, 0, 20)}):Play()
 
@@ -58,20 +57,84 @@ local function showNotification(text, color, duration)
     end)
 end
 
--- ===== ANTI‑KICK (limpo, sem propagandas) =====
+-- ===== ANTI‑KICK (instalação única, estado confirmado) =====
 local kickAvoidCount = nil
 local ac1 = nil
+local antiKickReady = false
+local antiKickTentativas = 0   -- evita laço infinito
 
+local function instalarHookAntiKick()
+    if antiKickReady then return true end
+    antiKickTentativas = antiKickTentativas + 1
+    if antiKickTentativas > 10 then return false end  -- limite de tentativas
+
+    local sucesso = pcall(function()
+        kickAvoidCount = 0
+        ac1 = hookmetamethod(game, "__namecall", function(self, ...)
+            local method = getnamecallmethod()
+            if method:lower() == "kick" and self == localPlayer then
+                kickAvoidCount = kickAvoidCount + 1
+                -- Notificação visual opcional (usa o mesmo sistema)
+                local CoreGui = game:GetService("CoreGui")
+                local ScreenGui = Instance.new("ScreenGui")
+                ScreenGui.Name = "AntiKickNotification"
+                ScreenGui.ResetOnSpawn = false
+                ScreenGui.Parent = CoreGui
+                local Frame = Instance.new("Frame")
+                Frame.Size = UDim2.new(0, 250, 0, 100)
+                Frame.Position = UDim2.new(1, -260, 1, -110)
+                Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+                Frame.BorderSizePixel = 0
+                Frame.BackgroundTransparency = 0.2
+                Frame.Parent = ScreenGui
+                local TitleLabel = Instance.new("TextLabel")
+                TitleLabel.Text = "Kick Prevented"
+                TitleLabel.Font = Enum.Font.SourceSansBold
+                TitleLabel.TextSize = 18
+                TitleLabel.TextColor3 = Color3.fromRGB(255, 85, 0)
+                TitleLabel.BackgroundTransparency = 1
+                TitleLabel.Size = UDim2.new(1, -10, 0, 25)
+                TitleLabel.Position = UDim2.new(0, 5, 0, 5)
+                TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+                TitleLabel.Parent = Frame
+                local MessageLabel = Instance.new("TextLabel")
+                MessageLabel.Text = "Total kicks avoided: " .. tostring(kickAvoidCount)
+                MessageLabel.Font = Enum.Font.SourceSans
+                MessageLabel.TextSize = 16
+                MessageLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                MessageLabel.BackgroundTransparency = 1
+                MessageLabel.Size = UDim2.new(1, -10, 1, -35)
+                MessageLabel.Position = UDim2.new(0, 5, 0, 30)
+                MessageLabel.TextXAlignment = Enum.TextXAlignment.Left
+                MessageLabel.TextWrapped = true
+                MessageLabel.Parent = Frame
+                task.delay(4, function() ScreenGui:Destroy() end)
+                return
+            end
+            return ac1(self, ...)
+        end)
+    end)
+
+    if sucesso and ac1 then
+        antiKickReady = true
+        return true
+    else
+        kickAvoidCount = nil
+        ac1 = nil
+        return false
+    end
+end
+
+-- Inicia a primeira tentativa imediatamente
 task.spawn(function()
-    pcall(function()
+    if instalarHookAntiKick() then
+        -- Após instalação bem‑sucedida, exibe as notificações personalizadas (somente uma vez)
         local CoreGui = game:GetService("CoreGui")
-
         local function createNotification(title, message)
             local ScreenGui = Instance.new("ScreenGui")
             ScreenGui.Name = "AntiKickNotification"
             ScreenGui.ResetOnSpawn = false
             ScreenGui.Parent = CoreGui
-
             local Frame = Instance.new("Frame")
             Frame.Size = UDim2.new(0, 250, 0, 100)
             Frame.Position = UDim2.new(1, -260, 1, -110)
@@ -79,7 +142,6 @@ task.spawn(function()
             Frame.BorderSizePixel = 0
             Frame.BackgroundTransparency = 0.2
             Frame.Parent = ScreenGui
-
             local TitleLabel = Instance.new("TextLabel")
             TitleLabel.Text = title
             TitleLabel.Font = Enum.Font.SourceSansBold
@@ -90,7 +152,6 @@ task.spawn(function()
             TitleLabel.Position = UDim2.new(0, 5, 0, 5)
             TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
             TitleLabel.Parent = Frame
-
             local MessageLabel = Instance.new("TextLabel")
             MessageLabel.Text = message
             MessageLabel.Font = Enum.Font.SourceSans
@@ -102,31 +163,18 @@ task.spawn(function()
             MessageLabel.TextXAlignment = Enum.TextXAlignment.Left
             MessageLabel.TextWrapped = true
             MessageLabel.Parent = Frame
-
-            task.delay(4, function()
-                ScreenGui:Destroy()
-            end)
+            task.delay(4, function() ScreenGui:Destroy() end)
         end
-
         createNotification("Anti Kick Enabled", "Most powerful antikick has been enabled...")
-
-        kickAvoidCount = 0
-        pcall(function()
-            ac1 = hookmetamethod(game, "__namecall", function(self, ...)
-                local method = getnamecallmethod()
-                if method:lower() == "kick" and self == localPlayer then
-                    kickAvoidCount = kickAvoidCount + 1
-                    createNotification("Kick Prevented", "Total kicks avoided: " .. tostring(kickAvoidCount))
-                    return
-                end
-                return ac1(self, ...)
-            end)
-        end)
-        -- Créditos de terceiros e setclipboard removidos
-    end)
+        task.wait(0.5)
+        createNotification("Thanks to a creator", "Thanks to @ojoaovictorbjj")
+        task.wait(4)
+        createNotification("Follow on Instagram", "Profile handle copied to clipboard")
+        pcall(function() setclipboard("ig: @ojoaovictorbjj") end)
+    end
 end)
 
--- ===== CRÉDITOS (Drawing, mantido original) =====
+-- ===== CRÉDITOS (Drawing) =====
 local creditosAtivos = true
 local creditosTempo = 0
 local creditosFase = 1
@@ -261,7 +309,7 @@ creditosConn = RunService.RenderStepped:Connect(function()
     end
 end)
 
--- ===== INTERFACE GUI (ScreenGui) =====
+-- ===== INTERFACE GUI (ScreenGui com ScrollingFrame) =====
 local menuGui = Instance.new("ScreenGui")
 menuGui.Name = "JV_Menu"
 menuGui.ResetOnSpawn = false
@@ -323,37 +371,53 @@ closeBtn.Size = UDim2.new(0, 30, 0, 30)
 closeBtn.Position = UDim2.new(1, -35, 0, 8)
 closeBtn.Parent = mainFrame
 
--- Container para controles
-local controlsFrame = Instance.new("Frame")
-controlsFrame.BackgroundTransparency = 1
-controlsFrame.Parent = mainFrame
+-- Área de conteúdo rolável
+local scrollFrame = Instance.new("ScrollingFrame")
+scrollFrame.BackgroundTransparency = 1
+scrollFrame.BorderSizePixel = 0
+scrollFrame.ScrollBarThickness = 12
+scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(200, 200, 200)
+scrollFrame.ScrollBarImageTransparency = 0
+scrollFrame.VerticalScrollBarInset = Enum.ScrollBarInset.Always
+scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+scrollFrame.Parent = mainFrame
 
 local uiListLayout = Instance.new("UIListLayout")
 uiListLayout.Padding = UDim.new(0, 8)
 uiListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-uiListLayout.Parent = controlsFrame
+uiListLayout.Parent = scrollFrame
 
--- Variáveis de estado (valores padrão ajustados)
+-- Variáveis de estado (valores padrão)
 local aimbotAtivo = true
 local espAtivo = true
 local boxAtivo = true
 local tracerAtivo = true
 local distanciaAtivo = true
-local boxOpacity = 0.4          -- padrão
-local tracerOpacity = 0.6       -- padrão
-local fovOpacity = 0.3          -- padrão
-local fovThickness = 1.5        -- padrão
+local boxOpacity = 0.4
+local tracerOpacity = 0.6
+local fovOpacity = 0.3
+local fovThickness = 1.5
 
--- Tabela para referência de áreas interativas (para evitar arraste)
+-- Estados de monitoramento
+local menuReady = false
+local aimbotReady = false
+local espReady = false
+local boxReady = false
+local tracerReady = false
+local distanciaReady = false
+local fovReady = false
+
+-- Áreas interativas para evitar arraste do menu
 local interactiveAreas = {}
 
--- Função para criar um toggle (switch)
+-- Função para criar um toggle
 local function createToggle(name, default, callback)
     local toggleFrame = Instance.new("Frame")
-    toggleFrame.Size = UDim2.new(1, 0, 0, 28)
+    toggleFrame.Size = UDim2.new(1, -10, 0, 28)
     toggleFrame.BackgroundTransparency = 1
-    toggleFrame.Parent = controlsFrame
+    toggleFrame.Parent = scrollFrame
 
     local label = Instance.new("TextLabel")
     label.Text = name
@@ -404,7 +468,6 @@ local function createToggle(name, default, callback)
     switchBtn.MouseButton1Click:Connect(updateState)
     switchBtn.Activated:Connect(updateState)
 
-    -- Registra área interativa (todo o toggleFrame)
     table.insert(interactiveAreas, toggleFrame)
     return toggleFrame
 end
@@ -412,9 +475,9 @@ end
 -- Função para criar um slider
 local function createSlider(name, min, max, initial, callback)
     local sliderFrame = Instance.new("Frame")
-    sliderFrame.Size = UDim2.new(1, 0, 0, 42)
+    sliderFrame.Size = UDim2.new(1, -10, 0, 42)
     sliderFrame.BackgroundTransparency = 1
-    sliderFrame.Parent = controlsFrame
+    sliderFrame.Parent = scrollFrame
 
     local label = Instance.new("TextLabel")
     label.Text = name .. ": " .. string.format("%.1f", initial)
@@ -500,19 +563,17 @@ local function createSlider(name, min, max, initial, callback)
         end
     end)
 
-    -- Registra como área interativa
     table.insert(interactiveAreas, sliderFrame)
     return sliderFrame
 end
 
--- Criação dos controles (todos switches ligados por padrão)
+-- Criação dos controles (switches e sliders)
 createToggle("Aimbot", true, function(val) aimbotAtivo = val end)
 createToggle("ESP", true, function(val) espAtivo = val end)
 createToggle("Box", true, function(val) boxAtivo = val end)
 createToggle("Tracer", true, function(val) tracerAtivo = val end)
 createToggle("Distância", true, function(val) distanciaAtivo = val end)
 
--- Sliders com os novos valores padrão
 createSlider("FOV Size", 10, 200, fov, function(val)
     fov = val
     if FOVring then FOVring.Radius = val end
@@ -531,21 +592,155 @@ createSlider("Tracer Visibility", 0, 1, tracerOpacity, function(val)
     tracerOpacity = val
 end)
 
--- Ajusta tamanho do painel conforme o conteúdo
+-- ===== SEÇÃO "INFORMAÇÕES" (monitoramento dinâmico) =====
+local infoFrame = Instance.new("Frame")
+infoFrame.Size = UDim2.new(1, -10, 0, 0)
+infoFrame.BackgroundTransparency = 1
+infoFrame.Parent = scrollFrame
+
+local infoList = Instance.new("UIListLayout")
+infoList.Padding = UDim.new(0, 4)
+infoList.HorizontalAlignment = Enum.HorizontalAlignment.Left
+infoList.SortOrder = Enum.SortOrder.LayoutOrder
+infoList.Parent = infoFrame
+
+local infoTitle = Instance.new("TextLabel")
+infoTitle.Text = "Informações"
+infoTitle.Font = Enum.Font.SourceSansBold
+infoTitle.TextSize = 15
+infoTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+infoTitle.BackgroundTransparency = 1
+infoTitle.Size = UDim2.new(1, 0, 0, 18)
+infoTitle.TextXAlignment = Enum.TextXAlignment.Left
+infoTitle.Parent = infoFrame
+
+local statusLabels = {}
+
+local function addStatusLine(name)
+    local lbl = Instance.new("TextLabel")
+    lbl.Text = "🟡 " .. name .. ": Inicializando..."
+    lbl.Font = Enum.Font.SourceSans
+    lbl.TextSize = 13
+    lbl.TextColor3 = Color3.fromRGB(220, 220, 220)
+    lbl.BackgroundTransparency = 1
+    lbl.Size = UDim2.new(1, 0, 0, 16)
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Parent = infoFrame
+    statusLabels[name] = lbl
+    return lbl
+end
+
+-- Criar linhas de status
+addStatusLine("Menu")
+addStatusLine("Anti Kick")
+addStatusLine("Aimbot")
+addStatusLine("ESP")
+addStatusLine("Box")
+addStatusLine("Tracer")
+addStatusLine("Distância")
+addStatusLine("FOV")
+
+infoFrame.Size = UDim2.new(1, -10, 0, 18 + 8 * 16 + 7 * 4)
+
+-- Função que atualiza os textos dinamicamente com estados reais
+local function updateInfoStatus()
+    -- Menu
+    if menuReady then
+        statusLabels["Menu"].Text = menuCollapsed and "🔴 Menu: Minimizado" or "🟢 Menu: Expandido"
+    else
+        statusLabels["Menu"].Text = "🟡 Menu: Inicializando..."
+    end
+
+    -- Anti Kick – lê a flag global (agora garantida)
+    if antiKickReady then
+        statusLabels["Anti Kick"].Text = "🟢 Anti Kick: Ativado"
+    elseif kickAvoidCount == nil then
+        statusLabels["Anti Kick"].Text = "🟡 Anti Kick: Inicializando..."
+    else
+        statusLabels["Anti Kick"].Text = "🔴 Anti Kick: Erro"
+    end
+
+    -- Aimbot
+    if aimbotReady then
+        statusLabels["Aimbot"].Text = aimbotAtivo and "🟢 Aimbot: Ativado" or "🔴 Aimbot: Desativado"
+    else
+        statusLabels["Aimbot"].Text = "🟡 Aimbot: Inicializando..."
+    end
+
+    -- ESP
+    if espReady then
+        statusLabels["ESP"].Text = espAtivo and "🟢 ESP: Ativado" or "🔴 ESP: Desativado"
+    else
+        statusLabels["ESP"].Text = "🟡 ESP: Inicializando..."
+    end
+
+    -- Box (dependente de ESP)
+    if espReady then
+        statusLabels["Box"].Text = boxAtivo and "🟢 Box: Ativado" or "🔴 Box: Desativado"
+    else
+        statusLabels["Box"].Text = "🟡 Box: Aguardando ESP..."
+    end
+
+    -- Tracer
+    if espReady then
+        statusLabels["Tracer"].Text = tracerAtivo and "🟢 Tracer: Ativado" or "🔴 Tracer: Desativado"
+    else
+        statusLabels["Tracer"].Text = "🟡 Tracer: Aguardando ESP..."
+    end
+
+    -- Distância
+    if espReady then
+        statusLabels["Distância"].Text = distanciaAtivo and "🟢 Distância: Ativado" or "🔴 Distância: Desativado"
+    else
+        statusLabels["Distância"].Text = "🟡 Distância: Aguardando ESP..."
+    end
+
+    -- FOV
+    if fovReady then
+        if FOVring and FOVring.Visible and fovOpacity > 0 then
+            statusLabels["FOV"].Text = "🟢 FOV: Ativado"
+        elseif FOVring then
+            statusLabels["FOV"].Text = "🔴 FOV: Desativado"
+        else
+            statusLabels["FOV"].Text = "🔴 FOV: Erro"
+        end
+    else
+        statusLabels["FOV"].Text = "🟡 FOV: Inicializando..."
+    end
+end
+
+-- Sistema de tentativas (não faz nada se antiKickReady)
+local function monitorAndRetry()
+    if not antiKickReady and kickAvoidCount == nil then
+        -- Tenta novamente, mas apenas se ainda não estiver pronto
+        task.spawn(function()
+            if instalarHookAntiKick() then
+                -- Se conseguiu, exibe as notificações (a função já cuida disso uma vez)
+            end
+        end)
+    end
+    if not menuReady and scriptIniciado then
+        menuReady = true
+    end
+end
+
+-- Configuração do tamanho do painel (fixo) e da área de rolagem
 local function updatePanelSize()
     local togglesCount = 5
     local slidersCount = 5
     local toggleHeight = 28
     local sliderHeight = 42
     local padding = 8
-    local titleHeight = 56  -- título + subtítulo
+    local titleHeight = 56
     local topMargin = 8
     local bottomMargin = 12
     local contentHeight = (togglesCount * toggleHeight) + (slidersCount * sliderHeight) + ((togglesCount + slidersCount - 1) * padding)
     local totalHeight = titleHeight + contentHeight + topMargin + bottomMargin
+
     mainFrame.Size = UDim2.new(0, 230, 0, totalHeight)
-    controlsFrame.Size = UDim2.new(1, -20, 0, contentHeight)
-    controlsFrame.Position = UDim2.new(0, 10, 0, titleHeight + topMargin)
+    scrollFrame.Size = UDim2.new(1, -20, 0, contentHeight)
+    scrollFrame.Position = UDim2.new(0, 10, 0, titleHeight + topMargin)
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, contentHeight + 10)
 end
 updatePanelSize()
 
@@ -565,8 +760,7 @@ local function setCollapsed(collapsed, instant)
     local targetSize = collapsed and collapsedSize or expandedSize
     local targetPos = collapsed and collapsedPos or expandedPos
 
-    -- Visibilidade dos controles
-    for _, child in ipairs(controlsFrame:GetChildren()) do
+    for _, child in ipairs(scrollFrame:GetChildren()) do
         if child:IsA("Frame") or child:IsA("GuiObject") then
             child.Visible = not collapsed
         end
@@ -575,6 +769,7 @@ local function setCollapsed(collapsed, instant)
     closeBtn.Visible = not collapsed
     creditsSubLabel.Visible = not collapsed
     titleLabel.Text = collapsed and "JV" or "JV Store"
+    scrollFrame.Visible = not collapsed
 
     if instant then
         mainFrame.Size = targetSize
@@ -597,7 +792,6 @@ minimizeBtn.Activated:Connect(function()
 end)
 
 closeBtn.MouseButton1Click:Connect(function()
-    -- Janela de confirmação
     local confirmGui = Instance.new("ScreenGui")
     confirmGui.Parent = game:GetService("CoreGui")
     local confirmFrame = Instance.new("Frame")
@@ -655,23 +849,19 @@ closeBtn.MouseButton1Click:Connect(function()
 end)
 closeBtn.Activated:Connect(function() closeBtn.MouseButton1Click:Fire() end)
 
--- Sistema de arraste (evita conflito com controles)
+-- Sistema de arraste (apenas cabeçalho/bordas)
 local draggingMenu = false
 local dragStartPos = nil
 local dragStartFrame = nil
 local isDrag = false
 local minDragDistance = 3
 
-local function isMouseOverInteractive(mousePos)
-    for _, area in ipairs(interactiveAreas) do
-        if area.Visible and area.AbsolutePosition and area.AbsoluteSize then
-            local pos = area.AbsolutePosition
-            local size = area.AbsoluteSize
-            if mousePos.X >= pos.X and mousePos.X <= pos.X + size.X and
-               mousePos.Y >= pos.Y and mousePos.Y <= pos.Y + size.Y then
-                return true
-            end
-        end
+local function isMouseOverScrollFrame(mousePos)
+    if scrollFrame.Visible and scrollFrame.AbsolutePosition and scrollFrame.AbsoluteSize then
+        local pos = scrollFrame.AbsolutePosition
+        local size = scrollFrame.AbsoluteSize
+        return mousePos.X >= pos.X and mousePos.X <= pos.X + size.X and
+               mousePos.Y >= pos.Y and mousePos.Y <= pos.Y + size.Y
     end
     return false
 end
@@ -679,10 +869,20 @@ end
 local function startDrag(input)
     if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
         local mousePos = input.Position
-        -- Se o clique for sobre um controle interativo, não inicia arraste
-        if isMouseOverInteractive(mousePos) then
+        if isMouseOverScrollFrame(mousePos) then
             draggingMenu = false
             return
+        end
+        for _, area in ipairs(interactiveAreas) do
+            if area.Visible and area.AbsolutePosition and area.AbsoluteSize then
+                local pos = area.AbsolutePosition
+                local size = area.AbsoluteSize
+                if mousePos.X >= pos.X and mousePos.X <= pos.X + size.X and
+                   mousePos.Y >= pos.Y and mousePos.Y <= pos.Y + size.Y then
+                    draggingMenu = false
+                    return
+                end
+            end
         end
         draggingMenu = true
         isDrag = false
@@ -919,13 +1119,26 @@ function iniciarScript()
     Players.PlayerRemoving:Connect(removeESP)
     localPlayer.CharacterAdded:Connect(function(char) localChar = char end)
 
-    -- Sequência de notificações com verificação real
+    menuReady = true
+    aimbotReady = true
+    espReady = true
+    boxReady = true
+    tracerReady = true
+    distanciaReady = true
+    fovReady = true
+
+    -- Sequência de notificações única, aguardando o Anti‑Kick
     task.spawn(function()
         showNotification("🟨 Carregando Script...", Color3.fromRGB(255, 255, 0), 2)
         task.wait(2.5)
 
-        local antiKickOk = (kickAvoidCount ~= nil)
-        if antiKickOk then
+        -- Aguarda até 10 segundos pelo Anti‑Kick
+        local espera = 0
+        while not antiKickReady and espera < 10 do
+            task.wait(0.5)
+            espera = espera + 0.5
+        end
+        if antiKickReady then
             showNotification("🟩 Anti Kick ativado com sucesso.", Color3.fromRGB(0, 255, 0), 2)
         else
             showNotification("🟥 Falha no Anti Kick.", Color3.fromRGB(255, 0, 0), 3)
@@ -948,7 +1161,6 @@ function iniciarScript()
         end
     end)
 
-    -- Limpeza total
     function fullCleanup()
         if mainLoopConn then mainLoopConn:Disconnect(); mainLoopConn = nil end
         if FOVring then FOVring:Remove() end
@@ -965,7 +1177,6 @@ function iniciarScript()
         end
     end)
 
-    -- Loop principal
     mainLoopConn = RunService.RenderStepped:Connect(function()
         updateDrawings()
 
@@ -991,10 +1202,11 @@ function iniciarScript()
         end
 
         updateESP()
+        updateInfoStatus()
+        monitorAndRetry()
     end)
 end
 
--- Delete durante os créditos
 UserInputService.InputBegan:Connect(function(input)
     if input.KeyCode == Enum.KeyCode.Delete and not scriptIniciado then
         creditosAtivos = false
