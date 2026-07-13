@@ -1,7 +1,7 @@
 --[[
     Aimbot + ESP + AntiKick Indetectável
     Créditos: JV STORE | ig: jaovt.x7
-    Menu responsivo, alça de redimensionamento, FOV mobile, notificações reordenadas.
+    Correção: FOVring acessível globalmente, toggles funcionais.
 ]]
 local fov = 136.7
 local maxTransparency = 0.1
@@ -110,8 +110,6 @@ task.spawn(function()
                 ScreenGui:Destroy()
             end)
         end
-
-        -- Não mostramos mais a notificação "Anti Kick Enabled" aqui; será exibida após os créditos
 
         kickAvoidCount = 0
         ac1 = hookmetamethod(game, "__namecall", function(self, ...)
@@ -425,6 +423,7 @@ local function createToggle(name, default, callback)
     switchBtn.Size = UDim2.new(1, 0, 1, 0)
     switchBtn.BackgroundTransparency = 1
     switchBtn.Text = ""
+    switchBtn.ZIndex = 2  -- garante que o botão fique na frente
     switchBtn.Parent = switchBg
 
     local value = default
@@ -719,7 +718,6 @@ resizeHandle.InputBegan:Connect(function(input)
         resizing = true
         resizeStartY = input.Position.Y
         initialHeight = mainFrame.AbsoluteSize.Y
-        -- Evita que outros arrastes comecem
     end
 end)
 
@@ -728,7 +726,6 @@ UserInputService.InputChanged:Connect(function(input)
         local deltaY = input.Position.Y - resizeStartY
         local newHeight = math.clamp(initialHeight + deltaY, minHeight, maxHeight)
         mainFrame.Size = UDim2.new(0, 230, 0, newHeight)
-        -- Reajusta scrollFrame (a altura do conteúdo pode ser maior, mas o visível é o restante)
         local titleHeight = 56
         local topMargin = 8
         scrollFrame.Size = UDim2.new(1, -20, 0, newHeight - titleHeight - topMargin)
@@ -767,7 +764,7 @@ local function setCollapsed(collapsed, instant)
     creditsSubLabel.Visible = not collapsed
     titleLabel.Text = collapsed and "JV" or "JV Store"
     scrollFrame.Visible = not collapsed
-    resizeHandle.Visible = not collapsed  -- esconder alça quando minimizado
+    resizeHandle.Visible = not collapsed
 
     if instant then
         mainFrame.Size = targetSize
@@ -847,7 +844,7 @@ closeBtn.MouseButton1Click:Connect(function()
 end)
 closeBtn.Activated:Connect(function() closeBtn.MouseButton1Click:Fire() end)
 
--- Sistema de arraste (cabeçalho/bordas, sem interferir na alça de redimensionamento)
+-- Sistema de arraste (cabeçalho/bordas, sem interferir na alça)
 local draggingMenu = false
 local dragStartPos = nil
 local dragStartFrame = nil
@@ -867,7 +864,6 @@ end
 local function startDrag(input)
     if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
         local mousePos = input.Position
-        -- Se clicar na alça de redimensionamento, não arrasta o menu
         if resizeHandle.Visible and resizeHandle.AbsolutePosition and resizeHandle.AbsoluteSize then
             local handlePos = resizeHandle.AbsolutePosition
             local handleSize = resizeHandle.AbsoluteSize
@@ -902,7 +898,7 @@ end
 mainFrame.InputBegan:Connect(startDrag)
 
 UserInputService.InputChanged:Connect(function(input)
-    if resizing then return end  -- evita interferência
+    if resizing then return end
     if draggingMenu and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
         local delta = input.Position - dragStartPos
         if delta.Magnitude > minDragDistance then
@@ -939,14 +935,14 @@ setCollapsed(false, true)
 -- ===== SCRIPT PRINCIPAL =====
 local scriptIniciado = false
 local mainLoopConn
-local FOVring = nil
+local FOVring = nil   -- declarado no escopo principal
 local espObjects = {}
 
 function iniciarScript()
     if scriptIniciado then return end
     scriptIniciado = true
 
-    local FOVring = Drawing.new("Circle")
+    FOVring = Drawing.new("Circle")   -- atribuição à variável do escopo superior
     FOVring.Visible = true
     FOVring.Thickness = fovThickness
     FOVring.Color = Color3.fromRGB(128, 0, 128)
@@ -1138,7 +1134,6 @@ function iniciarScript()
 
     -- Sequência de notificações após os créditos
     task.spawn(function()
-        -- Aguarda Anti Kick (já está pronto, mas garantimos)
         while not antiKickReady do task.wait(0.3) end
         showNotification("🟩 Anti Kick ativado com sucesso.", Color3.fromRGB(0, 255, 0), 3)
         task.wait(3.5)
