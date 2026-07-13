@@ -1,6 +1,7 @@
 --[[
-    Aimbot + ESP (Box + Tracer + Distância)
+    Aimbot + ESP (Box + Tracer + Distância) + Menu Dinâmico
     Créditos: JV STORE | ig: jaovt.x7
+    Melhorias: ESP universal, Blur nos créditos, botão JV arrastável, animações, sliders
 ]]
 local fov = 50
 local maxTransparency = 0.1
@@ -8,16 +9,34 @@ local maxTransparency = 0.1
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
 local Cam = game.Workspace.CurrentCamera
 local Workspace = game.Workspace
 
 local localPlayer = Players.LocalPlayer
 local localChar = localPlayer.Character or localPlayer.CharacterAdded:Wait()
 
--- ─── SISTEMA DE CRÉDITOS (estilo RAYFIELD) ──────────────────────────────
+-- ===== MELHORIA 1: GUI DO BLUR PARA CRÉDITOS =====
+local blurGui = Instance.new("ScreenGui")
+blurGui.Name = "BlurCredits"
+blurGui.Parent = game:GetService("CoreGui")  -- ou PlayerGui
+blurGui.Enabled = true
+
+local blurFrame = Instance.new("Frame")
+blurFrame.Size = UDim2.new(1, 0, 1, 0)
+blurFrame.BackgroundTransparency = 1
+blurFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+blurFrame.Parent = blurGui
+
+local blurEffect = Instance.new("BlurEffect")
+blurEffect.Size = 24
+blurEffect.Parent = blurFrame
+
+-- ===== CRÉDITOS (mantido e melhorado) =====
 local creditosAtivos = true
 local creditosTempo = 0
 local creditosFase = 1
+local creditosConn  -- para desconectar depois
 
 local loadingText = Drawing.new("Text")
 loadingText.Visible = true
@@ -70,10 +89,14 @@ local function updateCreditosPosition()
 end
 updateCreditosPosition()
 
-RunService.RenderStepped:Connect(function()
+-- Desfoque inicial invisível, animamos depois
+blurEffect.Enabled = false
+
+creditosConn = RunService.RenderStepped:Connect(function()
     if not creditosAtivos then return end
     creditosTempo = creditosTempo + 0.016
 
+    -- Fase 1: loading
     if creditosFase == 1 then
         local alpha = math.min(creditosTempo / 1.0, 1)
         loadingText.Transparency = 1 - alpha
@@ -92,20 +115,34 @@ RunService.RenderStepped:Connect(function()
             subText.Visible = false
         end
 
+    -- Fase 2: créditos com blur
     elseif creditosFase == 2 then
         local alpha = math.min(creditosTempo / 0.8, 1)
         creditosText.Transparency = 1 - alpha
         creditosSub.Transparency = 1 - alpha
+
+        -- Ativa blur e fade in
+        if not blurEffect.Enabled then
+            blurEffect.Enabled = true
+            blurEffect.Size = 0
+            TweenService:Create(blurEffect, TweenInfo.new(0.5), {Size = 24}):Play()
+        end
 
         if creditosTempo > 4.0 then
             creditosFase = 3
             creditosTempo = 0
         end
 
+    -- Fase 3: fade out créditos e blur
     elseif creditosFase == 3 then
         local alpha = math.min(creditosTempo / 0.8, 1)
         creditosText.Transparency = alpha
         creditosSub.Transparency = alpha
+
+        -- Desfoque desaparece suavemente
+        if blurEffect.Size > 0 then
+            TweenService:Create(blurEffect, TweenInfo.new(0.5), {Size = 0}):Play()
+        end
 
         if creditosTempo > 1.0 then
             creditosAtivos = false
@@ -113,21 +150,378 @@ RunService.RenderStepped:Connect(function()
             creditosSub.Visible = false
             loadingText.Visible = false
             subText.Visible = false
+            blurEffect.Enabled = false
+            blurGui:Destroy()  -- limpa GUI do blur
+            if creditosConn then
+                creditosConn:Disconnect()
+                creditosConn = nil
+            end
             iniciarScript()
         end
     end
 end)
 
--- ─── SCRIPT PRINCIPAL ──────────────────────────────────────────────────
+-- ===== MELHORIA 2: INTERFACE DO MENU =====
+-- Variáveis de estado (podem ser alteradas pelo menu)
+local aimbotAtivo = true
+local espAtivo = true
+local boxAtivo = true
+local tracerAtivo = true
+local distanciaAtivo = true
+local espThickness = 1.5
+local boxThickness = 1.5
+local fovThickness = 2
+
+-- Função para criar o menu só depois dos créditos
+local menuDrawings = {}
+local menuAberto = false
+local menuAnimProgress = 0
+local menuTargetSize = Vector2.new(200, 280)
+local menuBasePos = Vector2.new(50, 50)
+
+-- Botão JV
+local btnJV = Drawing.new("Square")
+btnJV.Visible = false
+btnJV.Size = Vector2.new(32, 32)
+btnJV.Position = Vector2.new(30, 30)
+btnJV.Color = Color3.fromRGB(30, 30, 30)
+btnJV.Filled = true
+btnJV.Transparency = 0
+
+local btnJVText = Drawing.new("Text")
+btnJVText.Visible = false
+btnJVText.Text = "JV"
+btnJVText.Size = 18
+btnJVText.Center = true
+btnJVText.Color = Color3.fromRGB(255, 255, 255)
+btnJVText.Font = 2
+btnJVText.Position = btnJV.Position + btnJV.Size/2
+
+-- Painel do menu
+local panelBg = Drawing.new("Square")
+panelBg.Visible = false
+panelBg.Size = Vector2.new(0, 0)
+panelBg.Position = btnJV.Position + Vector2.new(0, btnJV.Size.Y + 5)
+panelBg.Color = Color3.fromRGB(40, 40, 40)
+panelBg.Filled = true
+panelBg.Transparency = 0
+
+-- Sliders e toggles serão criados dinamicamente
+local toggleDrawings = {}
+local sliderDrawings = {}
+
+-- Função para criar um toggle (checkbox + texto)
+local function createToggle(text, defaultValue, callback)
+    local toggle = {}
+    local yOffset = #toggleDrawings * 25 + 5
+
+    toggle.bg = Drawing.new("Square")
+    toggle.bg.Size = Vector2.new(16, 16)
+    toggle.bg.Position = panelBg.Position + Vector2.new(10, yOffset)
+    toggle.bg.Color = defaultValue and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(80, 80, 80)
+    toggle.bg.Filled = true
+    toggle.bg.Visible = false
+
+    toggle.check = Drawing.new("Square")
+    toggle.check.Size = Vector2.new(12, 12)
+    toggle.check.Position = toggle.bg.Position + Vector2.new(2, 2)
+    toggle.check.Color = Color3.fromRGB(255, 255, 255)
+    toggle.check.Filled = true
+    toggle.check.Visible = defaultValue
+
+    toggle.label = Drawing.new("Text")
+    toggle.label.Text = text
+    toggle.label.Size = 14
+    toggle.label.Position = toggle.bg.Position + Vector2.new(22, -1)
+    toggle.label.Color = Color3.fromRGB(255, 255, 255)
+    toggle.label.Font = 2
+    toggle.label.Visible = false
+
+    toggle.value = defaultValue
+    toggle.callback = callback
+
+    toggle.clickArea = {  -- hitbox para clique
+        Position = toggle.bg.Position,
+        Size = Vector2.new(100, 20)  -- largura suficiente para texto
+    }
+
+    table.insert(toggleDrawings, toggle)
+    return toggle
+end
+
+-- Função para criar um slider (barra + thumb)
+local function createSlider(text, min, max, initial, callback)
+    local slider = {}
+    local yOffset = #sliderDrawings * 30 + 5 + #toggleDrawings * 25 + 5
+
+    slider.label = Drawing.new("Text")
+    slider.label.Text = text .. ": " .. initial
+    slider.label.Size = 14
+    slider.label.Position = panelBg.Position + Vector2.new(10, yOffset)
+    slider.label.Color = Color3.fromRGB(255, 255, 255)
+    slider.label.Font = 2
+    slider.label.Visible = false
+
+    slider.trackBg = Drawing.new("Square")
+    slider.trackBg.Size = Vector2.new(150, 6)
+    slider.trackBg.Position = slider.label.Position + Vector2.new(0, 18)
+    slider.trackBg.Color = Color3.fromRGB(80, 80, 80)
+    slider.trackBg.Filled = true
+    slider.trackBg.Visible = false
+
+    slider.trackFill = Drawing.new("Square")
+    slider.trackFill.Size = Vector2.new(0, 6)
+    slider.trackFill.Position = slider.trackBg.Position
+    slider.trackFill.Color = Color3.fromRGB(0, 170, 0)
+    slider.trackFill.Filled = true
+    slider.trackFill.Visible = false
+
+    slider.thumb = Drawing.new("Square")
+    slider.thumb.Size = Vector2.new(12, 12)
+    slider.thumb.Position = slider.trackBg.Position + Vector2.new(0, -3)
+    slider.thumb.Color = Color3.fromRGB(255, 255, 255)
+    slider.thumb.Filled = true
+    slider.thumb.Visible = false
+
+    slider.value = initial
+    slider.min = min
+    slider.max = max
+    slider.callback = callback
+    slider.dragging = false
+
+    -- atualiza posição do thumb
+    local function updateThumb()
+        local t = (slider.value - min) / (max - min)
+        local x = slider.trackBg.Position.X + t * slider.trackBg.Size.X
+        slider.thumb.Position = Vector2.new(x - slider.thumb.Size.X/2, slider.trackBg.Position.Y - 3)
+        slider.trackFill.Size = Vector2.new(t * slider.trackBg.Size.X, 6)
+        slider.label.Text = text .. ": " .. math.floor(slider.value * 10) / 10
+    end
+    updateThumb()
+
+    slider.updateThumb = updateThumb
+    table.insert(sliderDrawings, slider)
+    return slider
+end
+
+-- Função para desenhar todos os elementos do menu
+local function renderMenu()
+    local alpha = menuAnimProgress
+    panelBg.Size = Vector2.new(
+        menuTargetSize.X * alpha,
+        menuTargetSize.Y * alpha
+    )
+    panelBg.Position = menuBasePos
+
+    -- Atualiza posições dos toggles
+    for i, toggle in ipairs(toggleDrawings) do
+        local yOff = (i-1) * 25 + 5
+        toggle.bg.Position = panelBg.Position + Vector2.new(10, yOff)
+        toggle.check.Position = toggle.bg.Position + Vector2.new(2, 2)
+        toggle.label.Position = toggle.bg.Position + Vector2.new(22, -1)
+        toggle.clickArea.Position = toggle.bg.Position
+        toggle.bg.Visible = alpha > 0 and menuAberto
+        toggle.check.Visible = toggle.value and alpha > 0 and menuAberto
+        toggle.label.Visible = alpha > 0 and menuAberto
+    end
+
+    -- Atualiza posições dos sliders
+    local sliderBaseY = #toggleDrawings * 25 + 10
+    for i, slider in ipairs(sliderDrawings) do
+        local yOff = sliderBaseY + (i-1) * 35
+        slider.label.Position = panelBg.Position + Vector2.new(10, yOff)
+        slider.trackBg.Position = slider.label.Position + Vector2.new(0, 18)
+        slider.trackFill.Position = slider.trackBg.Position
+        local t = (slider.value - slider.min) / (slider.max - slider.min)
+        local x = slider.trackBg.Position.X + t * slider.trackBg.Size.X
+        slider.thumb.Position = Vector2.new(x - slider.thumb.Size.X/2, slider.trackBg.Position.Y - 3)
+        slider.trackFill.Size = Vector2.new(t * slider.trackBg.Size.X, 6)
+        slider.label.Visible = alpha > 0 and menuAberto
+        slider.trackBg.Visible = alpha > 0 and menuAberto
+        slider.trackFill.Visible = alpha > 0 and menuAberto
+        slider.thumb.Visible = alpha > 0 and menuAberto
+        slider.label.Text = slider.label.Text:gsub("%:.*", ": " .. math.floor(slider.value * 10) / 10)
+    end
+end
+
+-- Criação dos toggles
+local toggleAimbot = createToggle("Aimbot", true, function(val) aimbotAtivo = val end)
+local toggleESP    = createToggle("ESP", true, function(val) espAtivo = val end)
+local toggleBox    = createToggle("Box", true, function(val) boxAtivo = val end)
+local toggleTracer = createToggle("Tracer", true, function(val) tracerAtivo = val end)
+local toggleDist   = createToggle("Distância", true, function(val) distanciaAtivo = val end)
+
+-- Criação dos sliders
+local sliderFOV = createSlider("FOV", 10, 200, fov, function(val)
+    fov = val
+    if FOVring then FOVring.Radius = val end
+end)
+local sliderESPThick = createSlider("ESP Thickness", 0.5, 5, espThickness, function(val)
+    espThickness = val
+    -- Aplica a todos os desenhos ESP ativos
+    for _, data in pairs(espObjects) do
+        if data.box then data.box.Thickness = val end
+        if data.tracer then data.tracer.Thickness = val end
+    end
+end)
+local sliderBoxThick = createSlider("Box Thickness", 0.5, 5, boxThickness, function(val)
+    boxThickness = val
+    for _, data in pairs(espObjects) do
+        if data.box then data.box.Thickness = val end
+    end
+end)
+local sliderFOVThick = createSlider("FOV Thickness", 1, 6, fovThickness, function(val)
+    fovThickness = val
+    if FOVring then FOVring.Thickness = val end
+end)
+
+-- Estado de arraste do botão JV
+local draggingBtn = false
+local dragStart = nil
+local btnStartPos = nil
+
+-- Conexão de entrada para menu (será ativada após créditos)
+local menuInputConn
+
+local function setupMenuInput()
+    menuInputConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+
+        local mousePos = UserInputService:GetMouseLocation()
+
+        -- Clique no botão JV
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            local btnBounds = {Position = btnJV.Position, Size = btnJV.Size}
+            if mousePos.X >= btnBounds.Position.X and mousePos.X <= btnBounds.Position.X + btnBounds.Size.X and
+               mousePos.Y >= btnBounds.Position.Y and mousePos.Y <= btnBounds.Position.Y + btnBounds.Size.Y then
+                menuAberto = not menuAberto
+                if menuAberto then
+                    -- animação de abertura
+                    menuAnimProgress = 0
+                    spawn(function()
+                        for i = 0, 1, 0.1 do
+                            menuAnimProgress = i
+                            renderMenu()
+                            wait(0.02)
+                        end
+                        menuAnimProgress = 1
+                        renderMenu()
+                    end)
+                else
+                    -- animação de fechamento
+                    menuAnimProgress = 1
+                    spawn(function()
+                        for i = 1, 0, -0.1 do
+                            menuAnimProgress = i
+                            renderMenu()
+                            wait(0.02)
+                        end
+                        menuAnimProgress = 0
+                        renderMenu()
+                    end)
+                end
+                return
+            end
+
+            -- Verifica toggles
+            if menuAberto then
+                for _, toggle in ipairs(toggleDrawings) do
+                    local a = toggle.clickArea
+                    if mousePos.X >= a.Position.X and mousePos.X <= a.Position.X + a.Size.X and
+                       mousePos.Y >= a.Position.Y and mousePos.Y <= a.Position.Y + a.Size.Y then
+                        toggle.value = not toggle.value
+                        toggle.check.Visible = toggle.value
+                        toggle.bg.Color = toggle.value and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(80, 80, 80)
+                        if toggle.callback then toggle.callback(toggle.value) end
+                        return
+                    end
+                end
+
+                -- Verifica sliders (início de arraste)
+                for _, slider in ipairs(sliderDrawings) do
+                    if slider.trackBg.Visible then
+                        local trackPos = slider.trackBg.Position
+                        local trackSize = slider.trackBg.Size
+                        if mousePos.Y >= trackPos.Y - 5 and mousePos.Y <= trackPos.Y + trackSize.Y + 5 and
+                           mousePos.X >= trackPos.X and mousePos.X <= trackPos.X + trackSize.X then
+                            slider.dragging = true
+                            -- atualiza valor imediatamente
+                            local relX = math.clamp(mousePos.X - trackPos.X, 0, trackSize.X)
+                            local t = relX / trackSize.X
+                            slider.value = slider.min + t * (slider.max - slider.min)
+                            slider.updateThumb()
+                            if slider.callback then slider.callback(slider.value) end
+                            return
+                        end
+                    end
+                end
+            end
+
+            -- Início de arraste do botão
+            local btnBounds = {Position = btnJV.Position, Size = btnJV.Size}
+            if mousePos.X >= btnBounds.Position.X and mousePos.X <= btnBounds.Position.X + btnBounds.Size.X and
+               mousePos.Y >= btnBounds.Position.Y and mousePos.Y <= btnBounds.Position.Y + btnBounds.Size.Y then
+                draggingBtn = true
+                dragStart = mousePos
+                btnStartPos = btnJV.Position
+            end
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input, gameProcessed)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            local mousePos = UserInputService:GetMouseLocation()
+            -- Arrastar botão
+            if draggingBtn then
+                local delta = mousePos - dragStart
+                btnJV.Position = btnStartPos + delta
+                btnJVText.Position = btnJV.Position + btnJV.Size/2
+                menuBasePos = btnJV.Position + Vector2.new(0, btnJV.Size.Y + 5)
+                renderMenu()
+            end
+
+            -- Arrastar sliders
+            for _, slider in ipairs(sliderDrawings) do
+                if slider.dragging then
+                    local relX = math.clamp(mousePos.X - slider.trackBg.Position.X, 0, slider.trackBg.Size.X)
+                    local t = relX / slider.trackBg.Size.X
+                    slider.value = slider.min + t * (slider.max - slider.min)
+                    slider.updateThumb()
+                    if slider.callback then slider.callback(slider.value) end
+                end
+            end
+        end
+    end)
+
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            draggingBtn = false
+            for _, slider in ipairs(sliderDrawings) do
+                slider.dragging = false
+            end
+        end
+    end)
+end
+
+-- ===== FIM MELHORIA DO MENU =====
+
+-- ===== SCRIPT PRINCIPAL (mantido e melhorado) =====
 local scriptIniciado = false
+local mainLoopConn  -- para desconectar quando deletar
 
 function iniciarScript()
     if scriptIniciado then return end
     scriptIniciado = true
 
+    -- Ativar botão e menu
+    btnJV.Visible = true
+    btnJVText.Visible = true
+    menuBasePos = btnJV.Position + Vector2.new(0, btnJV.Size.Y + 5)
+    setupMenuInput()
+
     local FOVring = Drawing.new("Circle")
     FOVring.Visible = true
-    FOVring.Thickness = 2
+    FOVring.Thickness = fovThickness
     FOVring.Color = Color3.fromRGB(128, 0, 128)
     FOVring.Filled = false
     FOVring.Radius = fov
@@ -135,8 +529,11 @@ function iniciarScript()
 
     local function updateDrawings()
         FOVring.Position = Cam.ViewportSize / 2
+        FOVring.Radius = fov
+        FOVring.Thickness = fovThickness
     end
 
+    -- Visibilidade com Raycast (mantida)
     local function isPlayerVisible(player)
         local char = player.Character
         if not char then return false end
@@ -167,13 +564,16 @@ function iniciarScript()
 
         for _, player in ipairs(Players:GetPlayers()) do
             if player ~= localPlayer then
-                local part = player.Character and player.Character:FindFirstChild(trg_part)
-                if part then
-                    local ePos, isOnScreen = Cam:WorldToViewportPoint(part.Position)
-                    local distance = (Vector2.new(ePos.x, ePos.y) - mousePos).Magnitude
-                    if isOnScreen and distance < fov and distance < last and isPlayerVisible(player) then
-                        last = distance
-                        nearest = player
+                local char = player.Character
+                if char then
+                    local part = char:FindFirstChild(trg_part)
+                    if part then
+                        local ePos, isOnScreen = Cam:WorldToViewportPoint(part.Position)
+                        local distance = (Vector2.new(ePos.x, ePos.y) - mousePos).Magnitude
+                        if isOnScreen and distance < fov and distance < last and isPlayerVisible(player) then
+                            last = distance
+                            nearest = player
+                        end
                     end
                 end
             end
@@ -181,7 +581,7 @@ function iniciarScript()
         return nearest
     end
 
-    -- ─── ESP ──────────────────────────────────────────────────────────────────
+    -- ===== ESP (melhorado para universal) =====
     local espObjects = {}
 
     local function createESP(player)
@@ -192,13 +592,13 @@ function iniciarScript()
             distanceText = Drawing.new("Text")
         }
         data.box.Visible = false
-        data.box.Thickness = 1.5
+        data.box.Thickness = boxThickness
         data.box.Color = Color3.fromRGB(0, 255, 0)
         data.box.Transparency = 0.3
         data.box.Filled = false
 
         data.tracer.Visible = false
-        data.tracer.Thickness = 1
+        data.tracer.Thickness = espThickness
         data.tracer.Color = Color3.fromRGB(255, 255, 255)
         data.tracer.Transparency = 0.3
 
@@ -223,6 +623,16 @@ function iniciarScript()
     end
 
     local function updateESP()
+        if not espAtivo then
+            -- Oculta tudo
+            for _, data in pairs(espObjects) do
+                data.box.Visible = false
+                data.tracer.Visible = false
+                data.distanceText.Visible = false
+            end
+            return
+        end
+
         local viewport = Cam.ViewportSize
         local bottomCenter = Vector2.new(viewport.X / 2, viewport.Y)
 
@@ -234,29 +644,45 @@ function iniciarScript()
             end
 
             local head = char:FindFirstChild("Head")
-            local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
+            -- Torso universal: procura R6, R15 e custom
+            local torso = char:FindFirstChild("Torso") 
+                       or char:FindFirstChild("UpperTorso") 
+                       or char:FindFirstChild("LowerTorso") 
+                       or char:FindFirstChild("HumanoidRootPart")
+            
             if head and torso then
                 local headPos, headVis = Cam:WorldToViewportPoint(head.Position)
                 local torsoPos = Cam:WorldToViewportPoint(torso.Position)
 
                 if headVis then
                     local distance = math.floor((Cam.CFrame.Position - head.Position).Magnitude)
-                    local height = (headPos.Y - torsoPos.Y) * 3.5
+                    local height = math.abs(headPos.Y - torsoPos.Y) * 3.5
                     local width = height * 0.5
                     local centerX = headPos.X
                     local centerY = (headPos.Y + torsoPos.Y) / 2
 
-                    data.box.Visible = true
-                    data.box.Size = Vector2.new(width, height)
-                    data.box.Position = Vector2.new(centerX - width/2, centerY - height/2)
+                    -- Box
+                    data.box.Visible = boxAtivo
+                    if boxAtivo then
+                        data.box.Size = Vector2.new(width, height)
+                        data.box.Position = Vector2.new(centerX - width/2, centerY - height/2)
+                        data.box.Thickness = boxThickness
+                    end
 
-                    data.tracer.Visible = true
-                    data.tracer.From = bottomCenter
-                    data.tracer.To = Vector2.new(headPos.X, headPos.Y)
+                    -- Tracer
+                    data.tracer.Visible = tracerAtivo
+                    if tracerAtivo then
+                        data.tracer.From = bottomCenter
+                        data.tracer.To = Vector2.new(headPos.X, headPos.Y)
+                        data.tracer.Thickness = espThickness
+                    end
 
-                    data.distanceText.Visible = true
-                    data.distanceText.Text = tostring(distance) .. "m"
-                    data.distanceText.Position = Vector2.new(headPos.X, headPos.Y + height/2 + 20)
+                    -- Distância
+                    data.distanceText.Visible = distanciaAtivo
+                    if distanciaAtivo then
+                        data.distanceText.Text = tostring(distance) .. "m"
+                        data.distanceText.Position = Vector2.new(headPos.X, headPos.Y + height/2 + 20)
+                    end
                 else
                     data.box.Visible = false
                     data.tracer.Visible = false
@@ -266,15 +692,22 @@ function iniciarScript()
                 data.box.Visible = false
                 data.tracer.Visible = false
                 data.distanceText.Visible = false
+                -- Aguarda partes carregarem (Head pode spawnar depois)
             end
         end
     end
 
-    -- ─── GERENCIAR JOGADORES ──────────────────────────────────────────────
+    -- Gerenciamento de jogadores (com correção para respawn)
     local function setupPlayer(player)
         if player == localPlayer then return end
-        if player.Character then createESP(player) end
-        player.CharacterAdded:Connect(function() createESP(player) end)
+        -- Remove ESP anterior se houver (para limpar ao respawnar)
+        player.CharacterAdded:Connect(function()
+            removeESP(player)
+            createESP(player)
+        end)
+        if player.Character then
+            createESP(player)
+        end
     end
 
     for _, player in ipairs(Players:GetPlayers()) do setupPlayer(player) end
@@ -282,36 +715,59 @@ function iniciarScript()
     Players.PlayerRemoving:Connect(removeESP)
     localPlayer.CharacterAdded:Connect(function(char) localChar = char end)
 
-    -- ─── TECLA DELETE ──────────────────────────────────────────────────────
+    -- Tecla DELETE (corrigida para desconectar tudo)
+    local function fullCleanup()
+        -- Desconecta loops
+        if mainLoopConn then mainLoopConn:Disconnect(); mainLoopConn = nil end
+        if menuInputConn then menuInputConn:Disconnect(); menuInputConn = nil end
+        if FOVring then FOVring:Remove() end
+        for player, data in pairs(espObjects) do
+            removeESP(player)
+        end
+        espObjects = {}
+        -- Remove menu
+        for _, toggle in ipairs(toggleDrawings) do
+            toggle.bg:Remove(); toggle.check:Remove(); toggle.label:Remove()
+        end
+        toggleDrawings = {}
+        for _, slider in ipairs(sliderDrawings) do
+            slider.label:Remove(); slider.trackBg:Remove(); slider.trackFill:Remove(); slider.thumb:Remove()
+        end
+        sliderDrawings = {}
+        btnJV:Remove()
+        btnJVText:Remove()
+        panelBg:Remove()
+        -- Limpa créditos se ainda existirem
+        loadingText:Remove(); subText:Remove(); creditosText:Remove(); creditosSub:Remove()
+        if blurGui then blurGui:Destroy() end
+    end
+
     UserInputService.InputBegan:Connect(function(input)
         if input.KeyCode == Enum.KeyCode.Delete then
-            FOVring:Remove()
-            for player, data in pairs(espObjects) do removeESP(player) end
-            espObjects = {}
-            loadingText.Visible = false
-            subText.Visible = false
-            creditosText.Visible = false
-            creditosSub.Visible = false
-            creditosAtivos = false
+            fullCleanup()
         end
     end)
 
-    -- ─── LOOP PRINCIPAL ──────────────────────────────────────────────────
-    RunService.RenderStepped:Connect(function()
+    -- Loop principal
+    mainLoopConn = RunService.RenderStepped:Connect(function()
         updateDrawings()
 
-        local closest = getClosestPlayerInFOV("Head")
-        if closest and closest.Character and closest.Character:FindFirstChild("Head") then
-            if isPlayerVisible(closest) then
-                lookAt(closest.Character.Head.Position)
+        if aimbotAtivo then
+            local closest = getClosestPlayerInFOV("Head")
+            if closest and closest.Character and closest.Character:FindFirstChild("Head") then
+                if isPlayerVisible(closest) then
+                    lookAt(closest.Character.Head.Position)
+                end
             end
-        end
 
-        if closest and closest.Character and closest.Character:FindFirstChild("Head") then
-            local ePos, isVis = Cam:WorldToViewportPoint(closest.Character.Head.Position)
-            if isVis then
-                local dist = (Vector2.new(ePos.x, ePos.y) - Cam.ViewportSize / 2).Magnitude
-                FOVring.Transparency = (1 - (dist / fov)) * maxTransparency
+            if closest and closest.Character and closest.Character:FindFirstChild("Head") then
+                local ePos, isVis = Cam:WorldToViewportPoint(closest.Character.Head.Position)
+                if isVis then
+                    local dist = (Vector2.new(ePos.x, ePos.y) - Cam.ViewportSize / 2).Magnitude
+                    FOVring.Transparency = (1 - (dist / fov)) * maxTransparency
+                else
+                    FOVring.Transparency = 0.1
+                end
             else
                 FOVring.Transparency = 0.1
             end
@@ -320,10 +776,11 @@ function iniciarScript()
         end
 
         updateESP()
+        renderMenu()
     end)
 end
 
--- Se apertar Delete durante os créditos, inicia o script imediatamente
+-- Se apertar Delete durante os créditos, inicia o script imediatamente (com cleanup)
 UserInputService.InputBegan:Connect(function(input)
     if input.KeyCode == Enum.KeyCode.Delete and not scriptIniciado then
         creditosAtivos = false
@@ -331,6 +788,11 @@ UserInputService.InputBegan:Connect(function(input)
         subText.Visible = false
         creditosText.Visible = false
         creditosSub.Visible = false
+        if blurGui then blurGui:Destroy() end
+        if creditosConn then
+            creditosConn:Disconnect()
+            creditosConn = nil
+        end
         iniciarScript()
     end
 end)
