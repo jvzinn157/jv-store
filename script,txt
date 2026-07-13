@@ -1,7 +1,7 @@
 --[[
     Aimbot + ESP + AntiKick Indetectável
     Créditos: JV STORE | ig: jaovt.x7
-    Anti‑Kick com notificação exclusiva, estado reconhecido pelo menu.
+    Menu responsivo, alça de redimensionamento, FOV mobile, notificações reordenadas.
 ]]
 local fov = 136.7
 local maxTransparency = 0.1
@@ -57,7 +57,10 @@ local function showNotification(text, color, duration)
     end)
 end
 
--- ===== ANTI‑KICK (código exato fornecido, com flag de estado) =====
+-- Exibe a primeira notificação antes dos créditos
+showNotification("🟨 Carregando Script...", Color3.fromRGB(255, 255, 0), 2)
+
+-- ===== ANTI‑KICK (instalação imediata, notificação adiada) =====
 local kickAvoidCount = 0
 local ac1 = nil
 local antiKickReady = false
@@ -108,7 +111,7 @@ task.spawn(function()
             end)
         end
 
-        createNotification("Anti Kick Enabled", "Most powerful antikick has been enabled...")
+        -- Não mostramos mais a notificação "Anti Kick Enabled" aqui; será exibida após os créditos
 
         kickAvoidCount = 0
         ac1 = hookmetamethod(game, "__namecall", function(self, ...)
@@ -121,8 +124,7 @@ task.spawn(function()
             return ac1(self, ...)
         end)
 
-        -- Sinaliza que o Anti‑Kick está ativo (usado pelo menu e pela seção Informações)
-        antiKickReady = true
+        antiKickReady = true   -- sinaliza que o gancho está ativo
 
         createNotification("Thanks to a creator", "Thanks to @ojoaovictorbjj ")
 
@@ -346,6 +348,18 @@ uiListLayout.Padding = UDim.new(0, 8)
 uiListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 uiListLayout.Parent = scrollFrame
+
+-- Alça de redimensionamento (canto inferior direito)
+local resizeHandle = Instance.new("Frame")
+resizeHandle.Size = UDim2.new(0, 14, 0, 14)
+resizeHandle.AnchorPoint = Vector2.new(1, 1)
+resizeHandle.Position = UDim2.new(1, 0, 1, 0)
+resizeHandle.BackgroundColor3 = Color3.fromRGB(120, 120, 120)
+resizeHandle.BorderSizePixel = 0
+resizeHandle.Parent = mainFrame
+local resizeCorner = Instance.new("UICorner")
+resizeCorner.CornerRadius = UDim.new(0, 3)
+resizeCorner.Parent = resizeHandle
 
 -- Variáveis de estado (valores padrão)
 local aimbotAtivo = true
@@ -588,7 +602,6 @@ local function addStatusLine(name)
     return lbl
 end
 
--- Criar linhas de status
 addStatusLine("Menu")
 addStatusLine("Anti Kick")
 addStatusLine("Aimbot")
@@ -600,16 +613,13 @@ addStatusLine("FOV")
 
 infoFrame.Size = UDim2.new(1, -10, 0, 18 + 8 * 16 + 7 * 4)
 
--- Função que atualiza os textos dinamicamente com estados reais
 local function updateInfoStatus()
-    -- Menu
     if menuReady then
         statusLabels["Menu"].Text = menuCollapsed and "🔴 Menu: Minimizado" or "🟢 Menu: Expandido"
     else
         statusLabels["Menu"].Text = "🟡 Menu: Inicializando..."
     end
 
-    -- Anti Kick – agora reconhece a flag definida pelo próprio loader
     if antiKickReady then
         statusLabels["Anti Kick"].Text = "🟢 Anti Kick: Ativado"
     elseif kickAvoidCount == 0 then
@@ -618,42 +628,36 @@ local function updateInfoStatus()
         statusLabels["Anti Kick"].Text = "🔴 Anti Kick: Erro"
     end
 
-    -- Aimbot
     if aimbotReady then
         statusLabels["Aimbot"].Text = aimbotAtivo and "🟢 Aimbot: Ativado" or "🔴 Aimbot: Desativado"
     else
         statusLabels["Aimbot"].Text = "🟡 Aimbot: Inicializando..."
     end
 
-    -- ESP
     if espReady then
         statusLabels["ESP"].Text = espAtivo and "🟢 ESP: Ativado" or "🔴 ESP: Desativado"
     else
         statusLabels["ESP"].Text = "🟡 ESP: Inicializando..."
     end
 
-    -- Box (dependente de ESP)
     if espReady then
         statusLabels["Box"].Text = boxAtivo and "🟢 Box: Ativado" or "🔴 Box: Desativado"
     else
         statusLabels["Box"].Text = "🟡 Box: Aguardando ESP..."
     end
 
-    -- Tracer
     if espReady then
         statusLabels["Tracer"].Text = tracerAtivo and "🟢 Tracer: Ativado" or "🔴 Tracer: Desativado"
     else
         statusLabels["Tracer"].Text = "🟡 Tracer: Aguardando ESP..."
     end
 
-    -- Distância
     if espReady then
         statusLabels["Distância"].Text = distanciaAtivo and "🟢 Distância: Ativado" or "🔴 Distância: Desativado"
     else
         statusLabels["Distância"].Text = "🟡 Distância: Aguardando ESP..."
     end
 
-    -- FOV
     if fovReady then
         if FOVring and FOVring.Visible and fovOpacity > 0 then
             statusLabels["FOV"].Text = "🟢 FOV: Ativado"
@@ -667,19 +671,18 @@ local function updateInfoStatus()
     end
 end
 
--- Sistema de tentativas automáticas (executa em segundo plano)
+-- Sistema de tentativas automáticas
 local function monitorAndRetry()
-    -- Não tenta reiniciar se antiKickReady já for true
-    if not antiKickReady and kickAvoidCount == 0 then
-        -- Se ainda não ativou, o próprio loader já cuida (nada a fazer)
-    end
     if not menuReady and scriptIniciado then
         menuReady = true
     end
 end
 
--- Configuração do tamanho do painel (fixo) e da área de rolagem
+-- Função de dimensionamento adaptável
 local function updatePanelSize()
+    local screenHeight = Cam.ViewportSize.Y
+    local isMobile = UserInputService.TouchEnabled
+
     local togglesCount = 5
     local slidersCount = 5
     local toggleHeight = 28
@@ -691,12 +694,52 @@ local function updatePanelSize()
     local contentHeight = (togglesCount * toggleHeight) + (slidersCount * sliderHeight) + ((togglesCount + slidersCount - 1) * padding)
     local totalHeight = titleHeight + contentHeight + topMargin + bottomMargin
 
+    -- Ajuste de altura para mobile: máximo 80% da tela
+    if isMobile then
+        local maxMobileHeight = screenHeight * 0.8
+        totalHeight = math.min(totalHeight, maxMobileHeight)
+    end
+
     mainFrame.Size = UDim2.new(0, 230, 0, totalHeight)
     scrollFrame.Size = UDim2.new(1, -20, 0, contentHeight)
     scrollFrame.Position = UDim2.new(0, 10, 0, titleHeight + topMargin)
     scrollFrame.CanvasSize = UDim2.new(0, 0, 0, contentHeight + 10)
 end
 updatePanelSize()
+
+-- Redimensionamento manual
+local resizing = false
+local resizeStartY = nil
+local initialHeight = nil
+local minHeight = 200
+local maxHeight = Cam.ViewportSize.Y - 50
+
+resizeHandle.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        resizing = true
+        resizeStartY = input.Position.Y
+        initialHeight = mainFrame.AbsoluteSize.Y
+        -- Evita que outros arrastes comecem
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if resizing and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local deltaY = input.Position.Y - resizeStartY
+        local newHeight = math.clamp(initialHeight + deltaY, minHeight, maxHeight)
+        mainFrame.Size = UDim2.new(0, 230, 0, newHeight)
+        -- Reajusta scrollFrame (a altura do conteúdo pode ser maior, mas o visível é o restante)
+        local titleHeight = 56
+        local topMargin = 8
+        scrollFrame.Size = UDim2.new(1, -20, 0, newHeight - titleHeight - topMargin)
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        resizing = false
+    end
+end)
 
 -- Funcionalidade de minimizar/expandir
 local expandedSize = mainFrame.Size
@@ -724,6 +767,7 @@ local function setCollapsed(collapsed, instant)
     creditsSubLabel.Visible = not collapsed
     titleLabel.Text = collapsed and "JV" or "JV Store"
     scrollFrame.Visible = not collapsed
+    resizeHandle.Visible = not collapsed  -- esconder alça quando minimizado
 
     if instant then
         mainFrame.Size = targetSize
@@ -803,7 +847,7 @@ closeBtn.MouseButton1Click:Connect(function()
 end)
 closeBtn.Activated:Connect(function() closeBtn.MouseButton1Click:Fire() end)
 
--- Sistema de arraste (apenas cabeçalho/bordas)
+-- Sistema de arraste (cabeçalho/bordas, sem interferir na alça de redimensionamento)
 local draggingMenu = false
 local dragStartPos = nil
 local dragStartFrame = nil
@@ -823,6 +867,16 @@ end
 local function startDrag(input)
     if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
         local mousePos = input.Position
+        -- Se clicar na alça de redimensionamento, não arrasta o menu
+        if resizeHandle.Visible and resizeHandle.AbsolutePosition and resizeHandle.AbsoluteSize then
+            local handlePos = resizeHandle.AbsolutePosition
+            local handleSize = resizeHandle.AbsoluteSize
+            if mousePos.X >= handlePos.X and mousePos.X <= handlePos.X + handleSize.X and
+               mousePos.Y >= handlePos.Y and mousePos.Y <= handlePos.Y + handleSize.Y then
+                draggingMenu = false
+                return
+            end
+        end
         if isMouseOverScrollFrame(mousePos) then
             draggingMenu = false
             return
@@ -848,6 +902,7 @@ end
 mainFrame.InputBegan:Connect(startDrag)
 
 UserInputService.InputChanged:Connect(function(input)
+    if resizing then return end  -- evita interferência
     if draggingMenu and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
         local delta = input.Position - dragStartPos
         if delta.Magnitude > minDragDistance then
@@ -1081,17 +1136,12 @@ function iniciarScript()
     distanciaReady = true
     fovReady = true
 
-    -- Notificações principais (sem duplicar a do Anti‑Kick)
+    -- Sequência de notificações após os créditos
     task.spawn(function()
-        showNotification("🟨 Carregando Script...", Color3.fromRGB(255, 255, 0), 2)
-        task.wait(2.5)
-
-        -- Aguarda o Anti‑Kick estar pronto (já estará, pois foi inicializado antes)
-        while not antiKickReady do
-            task.wait(0.5)
-        end
-        -- Não exibe notificação extra; a do loader já apareceu
-        task.wait(1)
+        -- Aguarda Anti Kick (já está pronto, mas garantimos)
+        while not antiKickReady do task.wait(0.3) end
+        showNotification("🟩 Anti Kick ativado com sucesso.", Color3.fromRGB(0, 255, 0), 3)
+        task.wait(3.5)
 
         showNotification("🟩 Menu JV Store carregado.", Color3.fromRGB(0, 255, 0), 2)
         task.wait(2.5)
