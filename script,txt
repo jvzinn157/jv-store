@@ -1,11 +1,7 @@
 --[[
     Aimbot + ESP + AntiKick Indetectável (VERSÃO CORRIGIDA)
     Créditos: JV STORE | ig: jaovt.x7
-    Melhorias: 
-    - Sistema de aliados/inimigos universal
-    - UI com blur e animações corrigidas
-    - Aimbot com rotação de câmera
-    - Carregamento mais rápido
+    Melhorias: Sistema de aliados/inimigos, UI com blur, Aimbot para câmera
 ]]
 
 local Players = game:GetService("Players")
@@ -116,7 +112,7 @@ local function isAlly(player)
     return false
 end
 
--- ===== SISTEMA DE BLUR MELHORADO =====
+-- ===== SISTEMA DE BLUR =====
 local function createBlurEffect()
     local blurGui = Instance.new("ScreenGui")
     blurGui.Name = "BlurEffect"
@@ -129,15 +125,6 @@ local function createBlurEffect()
     blurFrame.BackgroundTransparency = 0.3
     blurFrame.BorderSizePixel = 0
     blurFrame.Parent = blurGui
-    
-    -- Efeito de desfoque visual
-    local gradient = Instance.new("UIGradient")
-    gradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.new(0, 0, 0)),
-        ColorSequenceKeypoint.new(1, Color3.new(0, 0, 0))
-    })
-    gradient.Rotation = 45
-    gradient.Parent = blurFrame
     
     return blurGui
 end
@@ -183,7 +170,6 @@ local function showNotification(text, color, duration, icon)
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = notifFrame
     
-    -- Animação de entrada
     notifFrame.Position = UDim2.new(0.5, -150, 0, -50)
     TweenService:Create(notifFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back), {
         Position = UDim2.new(0.5, -150, 0, 20)
@@ -199,7 +185,7 @@ local function showNotification(text, color, duration, icon)
     end)
 end
 
--- ===== ANTI-KICK MELHORADO =====
+-- ===== ANTI-KICK =====
 local kickAvoidCount = 0
 local ac1 = nil
 local antiKickReady = false
@@ -257,7 +243,7 @@ task.spawn(function()
             local method = getnamecallmethod()
             if method:lower() == "kick" and self == LocalPlayer then
                 kickAvoidCount += 1
-                createAntiKickNotification("🛡️ Kick Evitado", "Total de kicks evitados: " .. tostring(kickAvoidCount))
+                createAntiKickNotification("🛡️ Kick Evitado", "Total: " .. tostring(kickAvoidCount))
                 return
             end
             return ac1(self, ...)
@@ -287,7 +273,6 @@ local loadingCorner = Instance.new("UICorner")
 loadingCorner.CornerRadius = UDim.new(0, 15)
 loadingCorner.Parent = loadingFrame
 
--- Logo
 local logoText = Instance.new("TextLabel")
 logoText.Text = "JV"
 logoText.Font = Enum.Font.SourceSansBold
@@ -310,7 +295,6 @@ subtitleText.Position = UDim2.new(0, 0, 0, 80)
 subtitleText.TextXAlignment = Enum.TextXAlignment.Center
 subtitleText.Parent = loadingFrame
 
--- Barra de progresso
 local progressBg = Instance.new("Frame")
 progressBg.Size = UDim2.new(0, 300, 0, 6)
 progressBg.Position = UDim2.new(0.5, -150, 0, 140)
@@ -332,7 +316,6 @@ local progressCorner2 = Instance.new("UICorner")
 progressCorner2.CornerRadius = UDim.new(0, 3)
 progressCorner2.Parent = progressFill
 
--- Texto de status
 local statusText = Instance.new("TextLabel")
 statusText.Text = "Carregando Script..."
 statusText.Font = Enum.Font.SourceSans
@@ -344,7 +327,6 @@ statusText.Position = UDim2.new(0, 0, 0, 160)
 statusText.TextXAlignment = Enum.TextXAlignment.Center
 statusText.Parent = loadingFrame
 
--- Animações de carregamento
 local progress = 0
 local loadingComplete = false
 
@@ -373,7 +355,6 @@ task.spawn(function()
     if not loadingComplete then
         loadingComplete = true
         task.wait(0.5)
-        -- Fade out
         TweenService:Create(loadingFrame, TweenInfo.new(0.5), {
             BackgroundTransparency = 1
         }):Play()
@@ -403,7 +384,6 @@ local mainCorner = Instance.new("UICorner")
 mainCorner.CornerRadius = UDim.new(0, 12)
 mainCorner.Parent = mainFrame
 
--- Header
 local header = Instance.new("Frame")
 header.Size = UDim2.new(1, 0, 0, 50)
 header.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
@@ -445,7 +425,6 @@ creditsSubLabel.Position = UDim2.new(0, 15, 0, 30)
 creditsSubLabel.TextXAlignment = Enum.TextXAlignment.Left
 creditsSubLabel.Parent = header
 
--- Botões
 local minimizeBtn = Instance.new("TextButton")
 minimizeBtn.Text = "−"
 minimizeBtn.Font = Enum.Font.SourceSansBold
@@ -466,7 +445,6 @@ closeBtn.Size = UDim2.new(0, 35, 1, 0)
 closeBtn.Position = UDim2.new(1, -35, 0, 0)
 closeBtn.Parent = header
 
--- Área de conteúdo
 local scrollFrame = Instance.new("ScrollingFrame")
 scrollFrame.BackgroundTransparency = 1
 scrollFrame.BorderSizePixel = 0
@@ -484,7 +462,6 @@ uiListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 uiListLayout.Parent = scrollFrame
 
--- Alça de redimensionamento
 local resizeHandle = Instance.new("Frame")
 resizeHandle.Size = UDim2.new(0, 16, 0, 16)
 resizeHandle.AnchorPoint = Vector2.new(1, 1)
@@ -662,7 +639,6 @@ local function createSlider(name, min, max, initial, callback)
 end
 
 -- ===== CRIAÇÃO DOS CONTROLES =====
--- Seção Aimbot
 local aimbotSection = Instance.new("TextLabel")
 aimbotSection.Text = "⚡ AIMBOT"
 aimbotSection.Font = Enum.Font.SourceSansBold
@@ -686,7 +662,6 @@ createSlider("FOV Espessura", 1, 6, fovThickness, function(val)
     if FOVring then FOVring.Thickness = val end
 end)
 
--- Seção ESP
 local espSection = Instance.new("TextLabel")
 espSection.Text = "👁️ ESP"
 espSection.Font = Enum.Font.SourceSansBold
@@ -763,7 +738,6 @@ local dragStartFrame = nil
 mainFrame.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         local mousePos = input.Position
-        
         if header.AbsolutePosition and mousePos.Y >= header.AbsolutePosition.Y and 
            mousePos.Y <= header.AbsolutePosition.Y + header.AbsoluteSize.Y then
             draggingMenu = true
@@ -779,4 +753,288 @@ UserInputService.InputChanged:Connect(function(input)
         local newPos = UDim2.new(dragStartFrame.X.Scale, dragStartFrame.X.Offset + delta.X,
                                 dragStartFrame.Y.Scale, dragStartFrame.Y.Offset + delta.Y)
         mainFrame.Position = newPos
-        if menuColl
+        if menuCollapsed then
+            collapsedPos = newPos
+        else
+            expandedPos = newPos
+        end
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        draggingMenu = false
+    end
+end)
+
+-- ===== SCRIPT PRINCIPAL =====
+local scriptIniciado = false
+local mainLoopConn
+local FOVring = nil
+local espObjects = {}
+
+function iniciarScript()
+    if scriptIniciado then return end
+    scriptIniciado = true
+    
+    -- Cria o círculo FOV
+    FOVring = Drawing.new("Circle")
+    FOVring.Visible = true
+    FOVring.Thickness = fovThickness
+    FOVring.Color = Color3.fromRGB(128, 0, 128)
+    FOVring.Filled = false
+    FOVring.Radius = fov
+    FOVring.Position = Cam.ViewportSize / 2
+    
+    local function updateDrawings()
+        FOVring.Position = Cam.ViewportSize / 2
+        FOVring.Radius = fov
+        FOVring.Thickness = fovThickness
+    end
+    
+    local function isPlayerVisible(player)
+        local char = player.Character
+        if not char then return false end
+        local head = char:FindFirstChild("Head")
+        if not head then return false end
+        
+        local cameraPos = Cam.CFrame.Position
+        local targetPos = head.Position
+        
+        local params = RaycastParams.new()
+        params.FilterType = Enum.RaycastFilterType.Blacklist
+        params.FilterDescendantsInstances = {LocalChar, char}
+        
+        local result = Workspace:Raycast(cameraPos, (targetPos - cameraPos), params)
+        return result == nil
+    end
+    
+    -- FUNÇÃO CORRIGIDA: Aimbot com rotação de câmera
+    local function lookAt(target)
+        local cameraCFrame = Cam.CFrame
+        local cameraPos = cameraCFrame.Position
+        local lookVector = (target - cameraPos).unit
+        local newCFrame = CFrame.new(cameraPos, cameraPos + lookVector)
+        Cam.CFrame = newCFrame
+    end
+    
+    local function getClosestPlayerInFOV(trg_part)
+        local nearest = nil
+        local last = math.huge
+        local mousePos = Cam.ViewportSize / 2
+        
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer then
+                -- Filtro de aliados/inimigos
+                if espAliados and isAlly(player) then
+                    -- permite aliados
+                elseif espInimigos and not isAlly(player) then
+                    -- permite inimigos
+                else
+                    continue -- ignorar se não for permitido
+                end
+                
+                local char = player.Character
+                if char then
+                    local part = char:FindFirstChild(trg_part)
+                    if part then
+                        local ePos, isOnScreen = Cam:WorldToViewportPoint(part.Position)
+                        local distance = (Vector2.new(ePos.x, ePos.y) - mousePos).Magnitude
+                        if isOnScreen and distance < fov and distance < last and isPlayerVisible(player) then
+                            last = distance
+                            nearest = player
+                        end
+                    end
+                end
+            end
+        end
+        return nearest
+    end
+    
+    local function createESP(player)
+        if espObjects[player] then return end
+        local data = {
+            box = Drawing.new("Square"),
+            tracer = Drawing.new("Line"),
+            distanceText = Drawing.new("Text")
+        }
+        data.box.Visible = false
+        data.box.Thickness = 1.5
+        data.box.Color = Color3.fromRGB(0, 255, 0)
+        data.box.Transparency = 1 - boxOpacity
+        data.box.Filled = false
+        
+        data.tracer.Visible = false
+        data.tracer.Thickness = 1.5
+        data.tracer.Color = Color3.fromRGB(255, 255, 255)
+        data.tracer.Transparency = 1 - tracerOpacity
+        
+        data.distanceText.Visible = false
+        data.distanceText.Size = 14
+        data.distanceText.Center = true
+        data.distanceText.Color = Color3.fromRGB(255, 255, 255)
+        data.distanceText.Transparency = 0
+        data.distanceText.Font = 0
+        
+        espObjects[player] = data
+    end
+    
+    local function removeESP(player)
+        local data = espObjects[player]
+        if data then
+            data.box:Remove()
+            data.tracer:Remove()
+            data.distanceText:Remove()
+            espObjects[player] = nil
+        end
+    end
+    
+    local function updateESP()
+        if not espAtivo then
+            for _, data in pairs(espObjects) do
+                data.box.Visible = false
+                data.tracer.Visible = false
+                data.distanceText.Visible = false
+            end
+            return
+        end
+        
+        local viewport = Cam.ViewportSize
+        local bottomCenter = Vector2.new(viewport.X / 2, viewport.Y)
+        
+        for player, data in pairs(espObjects) do
+            -- Verifica se o player deve ser mostrado (aliado/inimigo)
+            local show = false
+            if espAliados and isAlly(player) then show = true end
+            if espInimigos and not isAlly(player) then show = true end
+            if not show then
+                data.box.Visible = false
+                data.tracer.Visible = false
+                data.distanceText.Visible = false
+                continue
+            end
+            
+            local char = player.Character
+            if not char or not player.Parent then
+                removeESP(player)
+                continue
+            end
+            
+            local head = char:FindFirstChild("Head")
+            local torso = char:FindFirstChild("Torso") 
+                       or char:FindFirstChild("UpperTorso") 
+                       or char:FindFirstChild("LowerTorso") 
+                       or char:FindFirstChild("HumanoidRootPart")
+            
+            if head and torso then
+                local headPos, headVis = Cam:WorldToViewportPoint(head.Position)
+                local torsoPos = Cam:WorldToViewportPoint(torso.Position)
+                
+                if headVis then
+                    local distance = math.floor((Cam.CFrame.Position - head.Position).Magnitude)
+                    local height = math.abs(headPos.Y - torsoPos.Y) * 3.5
+                    local width = height * 0.5
+                    local centerX = headPos.X
+                    local centerY = (headPos.Y + torsoPos.Y) / 2
+                    
+                    data.box.Visible = boxAtivo
+                    if boxAtivo then
+                        data.box.Size = Vector2.new(width, height)
+                        data.box.Position = Vector2.new(centerX - width/2, centerY - height/2)
+                        data.box.Transparency = 1 - boxOpacity
+                    end
+                    
+                    data.tracer.Visible = tracerAtivo
+                    if tracerAtivo then
+                        data.tracer.From = bottomCenter
+                        data.tracer.To = Vector2.new(headPos.X, headPos.Y)
+                        data.tracer.Transparency = 1 - tracerOpacity
+                    end
+                    
+                    data.distanceText.Visible = distanciaAtivo
+                    if distanciaAtivo then
+                        data.distanceText.Text = tostring(distance) .. "m"
+                        data.distanceText.Position = Vector2.new(headPos.X, headPos.Y + height/2 + 20)
+                    end
+                else
+                    data.box.Visible = false
+                    data.tracer.Visible = false
+                    data.distanceText.Visible = false
+                end
+            else
+                data.box.Visible = false
+                data.tracer.Visible = false
+                data.distanceText.Visible = false
+            end
+        end
+    end
+    
+    local function setupPlayer(player)
+        if player == LocalPlayer then return end
+        player.CharacterAdded:Connect(function()
+            removeESP(player)
+            createESP(player)
+        end)
+        if player.Character then createESP(player) end
+    end
+    
+    for _, player in ipairs(Players:GetPlayers()) do setupPlayer(player) end
+    Players.PlayerAdded:Connect(setupPlayer)
+    Players.PlayerRemoving:Connect(removeESP)
+    LocalPlayer.CharacterAdded:Connect(function(char) LocalChar = char end)
+    
+    showNotification("🚀 Script carregado com sucesso!", Color3.fromRGB(0, 255, 0), 3, "✅")
+    
+    function fullCleanup()
+        if mainLoopConn then mainLoopConn:Disconnect(); mainLoopConn = nil end
+        if FOVring then FOVring:Remove() end
+        for player, data in pairs(espObjects) do removeESP(player) end
+        espObjects = {}
+        menuGui:Destroy()
+        notificationGui:Destroy()
+    end
+    
+    UserInputService.InputBegan:Connect(function(input)
+        if input.KeyCode == Enum.KeyCode.Delete then
+            fullCleanup()
+        end
+    end)
+    
+    mainLoopConn = RunService.RenderStepped:Connect(function()
+        updateDrawings()
+        
+        local baseTransparency = 1 - fovOpacity
+        if aimbotAtivo then
+            local closest = getClosestPlayerInFOV("Head")
+            if closest and closest.Character and closest.Character:FindFirstChild("Head") then
+                if isPlayerVisible(closest) then
+                    lookAt(closest.Character.Head.Position) -- Agora a câmera segue
+                end
+                local ePos, isVis = Cam:WorldToViewportPoint(closest.Character.Head.Position)
+                if isVis then
+                    local dist = (Vector2.new(ePos.x, ePos.y) - Cam.ViewportSize / 2).Magnitude
+                    FOVring.Transparency = math.clamp(baseTransparency + (1 - (dist / fov)) * maxTransparency, 0, 1)
+                else
+                    FOVring.Transparency = baseTransparency
+                end
+            else
+                FOVring.Transparency = baseTransparency
+            end
+        else
+            FOVring.Transparency = baseTransparency
+        end
+        
+        updateESP()
+    end)
+end
+
+-- Previne que o script pare caso ocorra erro
+pcall(function()
+    -- Se a tela de loading falhar, inicia o script diretamente
+    task.wait(10)
+    if not scriptIniciado then
+        loadingGui:Destroy()
+        blurGui:Destroy()
+        iniciarScript()
+    end
+end)
