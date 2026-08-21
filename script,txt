@@ -1,7 +1,7 @@
 --[[
-    Aimbot + ESP + AntiKick Indetectável (CORRIGIDO - LOADING RÁPIDO)
+    Aimbot + ESP + AntiKick Indetectável (CORRIGIDO)
     Créditos: JV STORE | ig: jaovt.x7
-    Correção: Loading com blur real, execução imediata, menu funcional.
+    Correções: ESP aliado/inimigo, Aimbot câmera, UI/UX, Blur no loading.
 ]]
 
 local fov = 136.7
@@ -11,7 +11,6 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
-local Lighting = game:GetService("Lighting")
 local Cam = game.Workspace.CurrentCamera
 local Workspace = game.Workspace
 
@@ -61,121 +60,20 @@ end
 
 showNotification("🟨 Carregando Script...", Color3.fromRGB(255, 255, 0), 2)
 
--- ===== NOVA TELA DE LOADING COM BLUR =====
--- BlurEffect real no Lighting
-local blurEffect = Instance.new("BlurEffect")
-blurEffect.Name = "JV_LoadingBlur"
-blurEffect.Size = 16
-blurEffect.Parent = Lighting
+-- ===== B L U R   N A   T E L A   D E   C A R R E G A M E N T O =====
+local blurGui = Instance.new("ScreenGui")
+blurGui.Name = "BlurLoading"
+blurGui.ResetOnSpawn = false
+blurGui.Parent = game:GetService("CoreGui")
 
--- GUI de loading
-local loadingGui = Instance.new("ScreenGui")
-loadingGui.Name = "JV_Loading"
-loadingGui.ResetOnSpawn = false
-loadingGui.Parent = game:GetService("CoreGui")
+local blurFrame = Instance.new("Frame")
+blurFrame.Size = UDim2.new(1, 0, 1, 0)
+blurFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+blurFrame.BackgroundTransparency = 0.4
+blurFrame.BorderSizePixel = 0
+blurFrame.Parent = blurGui
 
--- Overlay escuro
-local overlay = Instance.new("Frame")
-overlay.Size = UDim2.new(1, 0, 1, 0)
-overlay.BackgroundColor3 = Color3.new(0, 0, 0)
-overlay.BackgroundTransparency = 0.5
-overlay.BorderSizePixel = 0
-overlay.Parent = loadingGui
-
--- Card central
-local card = Instance.new("Frame")
-card.Size = UDim2.new(0, 320, 0, 180)
-card.Position = UDim2.new(0.5, -160, 0.5, -90)
-card.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-card.BackgroundTransparency = 0.1
-card.BorderSizePixel = 0
-card.Parent = loadingGui
-
-local cardCorner = Instance.new("UICorner")
-cardCorner.CornerRadius = UDim.new(0, 16)
-cardCorner.Parent = card
-
-local cardStroke = Instance.new("UIStroke")
-cardStroke.Color = Color3.fromRGB(255, 215, 0)
-cardStroke.Thickness = 1
-cardStroke.Transparency = 0.6
-cardStroke.Parent = card
-
--- Título
-local titleLoad = Instance.new("TextLabel")
-titleLoad.Text = "JV STORE"
-titleLoad.Font = Enum.Font.SourceSansBold
-titleLoad.TextSize = 32
-titleLoad.TextColor3 = Color3.fromRGB(255, 215, 0)
-titleLoad.BackgroundTransparency = 1
-titleLoad.Size = UDim2.new(1, 0, 0, 50)
-titleLoad.Position = UDim2.new(0, 0, 0, 15)
-titleLoad.TextXAlignment = Enum.TextXAlignment.Center
-titleLoad.Parent = card
-
--- Status
-local statusLoad = Instance.new("TextLabel")
-statusLoad.Text = "Inicializando..."
-statusLoad.Font = Enum.Font.SourceSans
-statusLoad.TextSize = 14
-statusLoad.TextColor3 = Color3.fromRGB(200, 200, 200)
-statusLoad.BackgroundTransparency = 1
-statusLoad.Size = UDim2.new(1, 0, 0, 20)
-statusLoad.Position = UDim2.new(0, 0, 0, 70)
-statusLoad.TextXAlignment = Enum.TextXAlignment.Center
-statusLoad.Parent = card
-
--- Barra de progresso
-local progressBg = Instance.new("Frame")
-progressBg.Size = UDim2.new(0, 260, 0, 4)
-progressBg.Position = UDim2.new(0.5, -130, 0, 105)
-progressBg.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-progressBg.BorderSizePixel = 0
-progressBg.Parent = card
-
-local progCorner = Instance.new("UICorner")
-progCorner.CornerRadius = UDim.new(0, 2)
-progCorner.Parent = progressBg
-
-local progressFill = Instance.new("Frame")
-progressFill.Size = UDim2.new(0, 0, 1, 0)
-progressFill.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
-progressFill.BorderSizePixel = 0
-progressFill.Parent = progressBg
-
-local fillCorner = Instance.new("UICorner")
-fillCorner.CornerRadius = UDim.new(0, 2)
-fillCorner.Parent = progressFill
-
--- Animação de entrada do card
-card.Scale = UDim2.new(0.9, 0, 0.9, 0)
-card.BackgroundTransparency = 1
-TweenService:Create(card, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-    Scale = UDim2.new(1, 0, 1, 0),
-    BackgroundTransparency = 0.1
-}):Play()
-
--- Função para atualizar progresso
-local function setLoadingProgress(value, text)
-    value = math.clamp(value, 0, 1)
-    progressFill.Size = UDim2.new(value, 0, 1, 0)
-    if text then statusLoad.Text = text end
-end
-
--- Função para finalizar o loading
-local function finishLoading()
-    TweenService:Create(card, TweenInfo.new(0.3), {
-        Scale = UDim2.new(0.95, 0, 0.95, 0),
-        BackgroundTransparency = 1
-    }):Play()
-    TweenService:Create(overlay, TweenInfo.new(0.3), {
-        BackgroundTransparency = 1
-    }):Play()
-    task.wait(0.3)
-    loadingGui:Destroy()
-    local blur = Lighting:FindFirstChild("JV_LoadingBlur")
-    if blur then blur:Destroy() end
-end
+-- (O blur será removido ao final do carregamento)
 
 -- ===== ANTI‑KICK (instalação imediata) =====
 local kickAvoidCount = 0
@@ -247,7 +145,144 @@ task.spawn(function()
     end)
 end)
 
--- ===== INTERFACE GUI (ScreenGui com ScrollingFrame) =====
+-- ===== C R É D I T O S   (Drawing) =====
+local creditosAtivos = true
+local creditosTempo = 0
+local creditosFase = 1
+
+local creditBg = Drawing.new("Square")
+creditBg.Visible = false
+creditBg.Size = Cam.ViewportSize
+creditBg.Position = Vector2.new(0, 0)
+creditBg.Color = Color3.new(0, 0, 0)
+creditBg.Filled = true
+creditBg.Transparency = 1
+
+local loadingText = Drawing.new("Text")
+loadingText.Visible = true
+loadingText.Text = "CARREGANDO"
+loadingText.Size = 34
+loadingText.Center = true
+loadingText.Position = Vector2.new(Cam.ViewportSize.X / 2, Cam.ViewportSize.Y / 2 - 40)
+loadingText.Color = Color3.fromRGB(255, 255, 255)
+loadingText.Transparency = 1
+loadingText.Font = 2
+
+local subText = Drawing.new("Text")
+subText.Visible = true
+subText.Text = "."
+subText.Size = 20
+subText.Center = true
+subText.Position = Vector2.new(Cam.ViewportSize.X / 2, Cam.ViewportSize.Y / 2 + 10)
+subText.Color = Color3.fromRGB(200, 200, 200)
+subText.Transparency = 1
+subText.Font = 2
+
+local creditosText = Drawing.new("Text")
+creditosText.Visible = true
+creditosText.Text = "🐍 SCRIPT POR JV STORE"
+creditosText.Size = 32
+creditosText.Center = true
+creditosText.Position = Vector2.new(Cam.ViewportSize.X / 2, Cam.ViewportSize.Y / 2 - 20)
+creditosText.Color = Color3.fromRGB(255, 255, 255)
+creditosText.Transparency = 1
+creditosText.Font = 2
+
+local creditosSub = Drawing.new("Text")
+creditosSub.Visible = true
+creditosSub.Text = "ig: jaovt.x7"
+creditosSub.Size = 18
+creditosSub.Center = true
+creditosSub.Position = Vector2.new(Cam.ViewportSize.X / 2, Cam.ViewportSize.Y / 2 + 25)
+creditosSub.Color = Color3.fromRGB(200, 200, 200)
+creditosSub.Transparency = 1
+creditosSub.Font = 2
+
+local pontos = 0
+
+local function updateCreditosPosition()
+    local vSize = Cam.ViewportSize
+    creditBg.Size = vSize
+    loadingText.Position = Vector2.new(vSize.X / 2, vSize.Y / 2 - 40)
+    subText.Position = Vector2.new(vSize.X / 2, vSize.Y / 2 + 10)
+    creditosText.Position = Vector2.new(vSize.X / 2, vSize.Y / 2 - 20)
+    creditosSub.Position = Vector2.new(vSize.X / 2, vSize.Y / 2 + 25)
+end
+updateCreditosPosition()
+
+local creditosConn
+creditosConn = RunService.RenderStepped:Connect(function()
+    if not creditosAtivos then return end
+    creditosTempo = creditosTempo + 0.016
+
+    if creditosFase == 1 then
+        local alpha = math.min(creditosTempo / 1.0, 1)
+        loadingText.Transparency = 1 - alpha
+        subText.Transparency = 1 - alpha
+
+        pontos = pontos + 1
+        if pontos > 3 then pontos = 0 end
+        local pontoStr = ""
+        for i = 1, pontos do pontoStr = pontoStr .. "." end
+        subText.Text = pontoStr
+
+        if creditosTempo > 2.0 then
+            creditosFase = 2
+            creditosTempo = 0
+            loadingText.Visible = false
+            subText.Visible = false
+        end
+
+    elseif creditosFase == 2 then
+        local alpha = math.min(creditosTempo / 0.8, 1)
+        creditosText.Transparency = 1 - alpha
+        creditosSub.Transparency = 1 - alpha
+
+        if not creditBg.Visible then
+            creditBg.Visible = true
+            creditBg.Transparency = 1
+            local tweenAlpha = 0
+            while tweenAlpha < 0.6 do
+                tweenAlpha = tweenAlpha + 0.02
+                creditBg.Transparency = 1 - tweenAlpha
+                task.wait(0.01)
+            end
+            creditBg.Transparency = 0.4
+        end
+
+        if creditosTempo > 4.0 then
+            creditosFase = 3
+            creditosTempo = 0
+        end
+
+    elseif creditosFase == 3 then
+        local alpha = math.min(creditosTempo / 0.8, 1)
+        creditosText.Transparency = alpha
+        creditosSub.Transparency = alpha
+
+        if creditBg.Transparency < 1 then
+            creditBg.Transparency = 0.4 + alpha * 0.6
+        end
+
+        if creditosTempo > 1.0 then
+            creditosAtivos = false
+            creditosText.Visible = false
+            creditosSub.Visible = false
+            loadingText.Visible = false
+            subText.Visible = false
+            creditBg:Remove()
+            if creditosConn then
+                creditosConn:Disconnect()
+                creditosConn = nil
+            end
+            -- Remove o blur após os créditos
+            blurGui:Destroy()
+            iniciarScript()
+        end
+    end
+end)
+
+-- ===== I N T E R F A C E   G U I   (ScreenGui com ScrollingFrame) =====
 local menuGui = Instance.new("ScreenGui")
 menuGui.Name = "JV_Menu"
 menuGui.ResetOnSpawn = false
@@ -339,7 +374,7 @@ local resizeCorner = Instance.new("UICorner")
 resizeCorner.CornerRadius = UDim.new(0, 3)
 resizeCorner.Parent = resizeHandle
 
--- ===== VARIÁVEIS DE ESTADO =====
+-- ===== V A R I Á V E I S   D E   E S T A D O =====
 local aimbotAtivo = true
 local espAtivo = true
 local boxAtivo = true
@@ -350,7 +385,7 @@ local tracerOpacity = 0.6
 local fovOpacity = 0.3
 local fovThickness = 1.5
 
--- ===== NOVAS VARIÁVEIS PARA ALIADOS/INIMIGOS =====
+-- ===== N O V A S   V A R I Á V E I S   P A R A   A L I A D O S / I N I M I G O S =====
 local espAliados = true
 local espInimigos = true
 
@@ -359,9 +394,11 @@ local function getPlayerTeam(player)
     local character = player.Character
     if not character then return nil end
 
+    -- 1. Team padrão do Roblox
     local team = player.Team
     if team then return team.Name end
 
+    -- 2. Acessórios com BillboardGui (comum em jogos)
     for _, child in ipairs(character:GetChildren()) do
         if child:IsA("Accessory") or child:IsA("Hat") then
             local handle = child:FindFirstChild("Handle")
@@ -374,6 +411,7 @@ local function getPlayerTeam(player)
         end
     end
 
+    -- 3. Cor predominante das partes do corpo
     local colors = {}
     local parts = {"Head", "Torso", "UpperTorso", "LowerTorso", "HumanoidRootPart"}
     for _, partName in ipairs(parts) do
@@ -412,6 +450,7 @@ local function getPlayerTeam(player)
         end
     end
 
+    -- 4. Atributos do jogador
     local attributes = player:GetAttributes()
     for attr, value in pairs(attributes) do
         if string.lower(attr):find("team") or string.lower(attr):find("time") then
@@ -432,7 +471,7 @@ local function isAlly(player)
     return false
 end
 
--- ===== FUNÇÕES DA UI =====
+-- ===== F U N Ç Õ E S   D A   U I =====
 local interactiveAreas = {}
 
 local function createToggle(name, default, callback)
@@ -589,9 +628,10 @@ local function createSlider(name, min, max, initial, callback)
     return sliderFrame
 end
 
--- ===== CRIAÇÃO DOS CONTROLES =====
+-- ===== C R I A Ç Ã O   D O S   C O N T R O L E S =====
 createToggle("Aimbot", true, function(val) aimbotAtivo = val end)
 createToggle("ESP", true, function(val) espAtivo = val end)
+-- NOVOS TOGGLES PARA ALIADOS E INIMIGOS
 createToggle("ESP Aliados", true, function(val) espAliados = val end)
 createToggle("ESP Inimigos", true, function(val) espInimigos = val end)
 createToggle("Box", true, function(val) boxAtivo = val end)
@@ -616,7 +656,7 @@ createSlider("Tracer Visibility", 0, 1, tracerOpacity, function(val)
     tracerOpacity = val
 end)
 
--- ===== SEÇÃO "INFORMAÇÕES" (monitoramento) =====
+-- ===== S E Ç Ã O   " I N F O R M A Ç Õ E S "   (monitoramento) =====
 local infoFrame = Instance.new("Frame")
 infoFrame.Size = UDim2.new(1, -10, 0, 0)
 infoFrame.BackgroundTransparency = 1
@@ -662,7 +702,7 @@ addStatusLine("Box")
 addStatusLine("Tracer")
 addStatusLine("Distância")
 addStatusLine("FOV")
-addStatusLine("Aliados/Inimigos")
+addStatusLine("Aliados/Inimigos") -- novo
 
 infoFrame.Size = UDim2.new(1, -10, 0, 18 + 9 * 16 + 8 * 4)
 
@@ -723,17 +763,18 @@ local function updateInfoStatus()
         statusLabels["FOV"].Text = "🟡 FOV: Inicializando..."
     end
 
+    -- Status do sistema de aliados/inimigos
     statusLabels["Aliados/Inimigos"].Text = (espAliados and espInimigos) and "🟢 Ambos ativos" or 
                                             (espAliados and "🟡 Apenas aliados" or 
                                             (espInimigos and "🟡 Apenas inimigos" or "🔴 Nenhum"))
 end
 
--- ===== REDIMENSIONAMENTO E ARRASTE =====
+-- ===== R E D I M E N S I O N A M E N T O   E   A R R A S T E =====
 local function updatePanelSize()
     local screenHeight = Cam.ViewportSize.Y
     local isMobile = UserInputService.TouchEnabled
 
-    local togglesCount = 8
+    local togglesCount = 8 -- aumentado devido aos novos toggles
     local slidersCount = 5
     local toggleHeight = 28
     local sliderHeight = 42
@@ -742,7 +783,7 @@ local function updatePanelSize()
     local topMargin = 8
     local bottomMargin = 12
     local contentHeight = (togglesCount * toggleHeight) + (slidersCount * sliderHeight) + ((togglesCount + slidersCount - 1) * padding)
-    local totalHeight = titleHeight + contentHeight + topMargin + bottomMargin + 50
+    local totalHeight = titleHeight + contentHeight + topMargin + bottomMargin + 50 -- +50 para a seção de info
 
     if isMobile then
         local maxMobileHeight = screenHeight * 0.8
@@ -756,6 +797,7 @@ local function updatePanelSize()
 end
 updatePanelSize()
 
+-- Redimensionamento manual
 local resizing = false
 local resizeStartY = nil
 local initialHeight = nil
@@ -979,14 +1021,16 @@ UserInputService.InputEnded:Connect(function(input)
     end
 end)
 
+-- Inicia expandido
 setCollapsed(false, true)
 
--- ===== SCRIPT PRINCIPAL =====
+-- ===== S C R I P T   P R I N C I P A L =====
 local scriptIniciado = false
 local mainLoopConn
 local FOVring = nil
 local espObjects = {}
 
+-- Variáveis para verificar se os módulos estão prontos
 local menuReady = false
 local aimbotReady = false
 local espReady = false
@@ -999,8 +1043,6 @@ function iniciarScript()
     if scriptIniciado then return end
     scriptIniciado = true
 
-    setLoadingProgress(0.2, "Carregando Aimbot...")
-
     FOVring = Drawing.new("Circle")
     FOVring.Visible = true
     FOVring.Thickness = fovThickness
@@ -1008,8 +1050,6 @@ function iniciarScript()
     FOVring.Filled = false
     FOVring.Radius = fov
     FOVring.Position = Cam.ViewportSize / 2
-
-    setLoadingProgress(0.4, "Carregando ESP...")
 
     local function updateDrawings()
         FOVring.Position = Cam.ViewportSize / 2
@@ -1034,6 +1074,7 @@ function iniciarScript()
         return result == nil
     end
 
+    -- ===== A I M B O T   C O M   R O T A Ç Ã O   D E   C Â M E R A =====
     local function lookAt(targetPos)
         local cameraPos = Cam.CFrame.Position
         local lookVector = (targetPos - cameraPos).unit
@@ -1048,6 +1089,7 @@ function iniciarScript()
 
         for _, player in ipairs(Players:GetPlayers()) do
             if player ~= localPlayer then
+                -- Verifica se deve mostrar para aliados/inimigos baseado nos toggles
                 local ally = isAlly(player)
                 if (ally and not espAliados) or (not ally and not espInimigos) then
                     continue
@@ -1069,6 +1111,7 @@ function iniciarScript()
         return nearest
     end
 
+    -- ===== E S P   C O M   C O R E S   D I F E R E N C I A D A S =====
     local function createESP(player)
         if espObjects[player] then return end
         local data = {
@@ -1078,22 +1121,23 @@ function iniciarScript()
         }
         data.box.Visible = false
         data.box.Thickness = 1.5
-        data.box.Color = Color3.fromRGB(0, 255, 0)
+        data.box.Color = Color3.fromRGB(0, 255, 0) -- será alterado
         data.box.Transparency = 1 - boxOpacity
         data.box.Filled = false
 
         data.tracer.Visible = false
         data.tracer.Thickness = 1.5
-        data.tracer.Color = Color3.fromRGB(255, 255, 255)
+        data.tracer.Color = Color3.fromRGB(255, 255, 255) -- será alterado
         data.tracer.Transparency = 1 - tracerOpacity
 
         data.distanceText.Visible = false
         data.distanceText.Size = 14
         data.distanceText.Center = true
-        data.distanceText.Color = Color3.fromRGB(255, 255, 255)
+        data.distanceText.Color = Color3.fromRGB(255, 255, 255) -- será alterado
         data.distanceText.Transparency = 0
         data.distanceText.Font = 0
 
+        -- Define a cor baseada em aliado/inimigo
         local ally = isAlly(player)
         local color = ally and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
         data.box.Color = color
@@ -1133,6 +1177,7 @@ function iniciarScript()
                 continue
             end
 
+            -- Verifica se o player deve ser mostrado (aliado/inimigo)
             local ally = isAlly(player)
             if (ally and not espAliados) or (not ally and not espInimigos) then
                 data.box.Visible = false
@@ -1190,24 +1235,7 @@ function iniciarScript()
         end
     end
 
-    -- Atualização periódica de times (a cada 5 segundos)
-    task.spawn(function()
-        while true do
-            task.wait(5)
-            for player, data in pairs(espObjects) do
-                if player and player.Parent then
-                    local ally = isAlly(player)
-                    local color = ally and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
-                    data.box.Color = color
-                    data.tracer.Color = color
-                    data.distanceText.Color = color
-                else
-                    removeESP(player)
-                end
-            end
-        end
-    end)
-
+    -- Configuração de jogadores
     local function setupPlayer(player)
         if player == localPlayer then return end
         player.CharacterAdded:Connect(function()
@@ -1230,18 +1258,18 @@ function iniciarScript()
     distanciaReady = true
     fovReady = true
 
-    setLoadingProgress(1, "Pronto!")
-    task.wait(0.3)
-    finishLoading()
-
+    -- Notificações após os créditos
     task.spawn(function()
         while not antiKickReady do task.wait(0.3) end
         showNotification("🟩 Anti Kick ativado com sucesso.", Color3.fromRGB(0, 255, 0), 3)
         task.wait(3.5)
+
         showNotification("🟩 Menu JV Store carregado.", Color3.fromRGB(0, 255, 0), 2)
         task.wait(2.5)
+
         showNotification("🟨 Verificando recursos...", Color3.fromRGB(255, 255, 0), 2)
         task.wait(2.5)
+
         local allReady = (FOVring and espObjects and mainLoopConn)
         if allReady then
             showNotification("🟩 Verificação concluída.", Color3.fromRGB(0, 255, 0), 2)
@@ -1259,8 +1287,7 @@ function iniciarScript()
         espObjects = {}
         menuGui:Destroy()
         notificationGui:Destroy()
-        local blur = Lighting:FindFirstChild("JV_LoadingBlur")
-        if blur then blur:Destroy() end
+        pcall(function() loadingText:Remove(); subText:Remove(); creditosText:Remove(); creditosSub:Remove(); creditBg:Remove() end)
     end
 
     UserInputService.InputBegan:Connect(function(input)
@@ -1277,6 +1304,7 @@ function iniciarScript()
             local closest = getClosestPlayerInFOV("Head")
             if closest and closest.Character and closest.Character:FindFirstChild("Head") then
                 if isPlayerVisible(closest) then
+                    -- Aimbot com rotação de câmera (agora funciona)
                     lookAt(closest.Character.Head.Position)
                 end
                 local ePos, isVis = Cam:WorldToViewportPoint(closest.Character.Head.Position)
@@ -1298,8 +1326,14 @@ function iniciarScript()
     end)
 end
 
--- Inicia o script após um pequeno delay para garantir que a UI de loading seja exibida
-task.spawn(function()
-    task.wait(0.1)
-    iniciarScript()
+-- Caso o usuário pressione Delete antes do fim dos créditos, força o início
+UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.Delete and not scriptIniciado then
+        creditosAtivos = false
+        loadingText:Remove(); subText:Remove(); creditosText:Remove(); creditosSub:Remove()
+        creditBg:Remove()
+        if creditosConn then creditosConn:Disconnect(); creditosConn = nil end
+        blurGui:Destroy()
+        iniciarScript()
+    end
 end)
