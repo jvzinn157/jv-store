@@ -1,7 +1,6 @@
 --[[
-    Aimbot + ESP + AntiKick (FURTIVO)
+    Aimbot + ESP + AntiKick (FURTIVO - SEM FLY)
     Créditos: JV STORE | ig: jaovt.x7
-    Versão sem Fly, otimizada para furtividade.
 ]]
 
 -- ===== LIMPEZA DE EXECUÇÕES ANTERIORES =====
@@ -107,10 +106,9 @@ end
 
 showNotification("🟨 Carregando Script...", Color3.fromRGB(255, 255, 0), 2)
 
--- ===== ANTI-KICK FURTIVO (instalação imediata) =====
+-- ===== ANTI-KICK FURTIVO =====
 task.spawn(function()
     pcall(function()
-        -- Notificação local (não gera logs no servidor)
         local function createAntiKickNotification(title, message)
             local gui = Instance.new("ScreenGui")
             gui.Name = "AntiKickNotification"
@@ -155,7 +153,6 @@ task.spawn(function()
             task.delay(4, function() gui:Destroy() end)
         end
 
-        -- Método 1: bloquear kick via __namecall
         if hookmetamethod and getnamecallmethod then
             local oldNamecall
             oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
@@ -169,7 +166,6 @@ task.spawn(function()
             end)
         end
 
-        -- Método 2: bloquear TeleportService (sem gerar logs)
         if hookmetamethod and getnamecallmethod then
             local oldIndex
             oldIndex = hookmetamethod(game, "__index", function(self, key)
@@ -193,7 +189,7 @@ task.spawn(function()
     end)
 end)
 
--- ===== DETECÇÃO DE TIME (UNIVERSAL) =====
+-- ===== DETECÇÃO DE TIME =====
 local function getPlayerTeam(player)
     local character = player.Character
     if not character then return nil end
@@ -294,7 +290,6 @@ mainStroke.Transparency = 0.7
 mainStroke.Thickness = 1
 mainStroke.Parent = mainFrame
 
--- Botão JV
 local jvButton = Instance.new("TextButton")
 jvButton.Size = UDim2.new(1, 0, 1, 0)
 jvButton.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
@@ -318,7 +313,6 @@ jvStroke.Transparency = 0.7
 jvStroke.Thickness = 1
 jvStroke.Parent = jvButton
 
--- Header
 local headerFrame = Instance.new("Frame")
 headerFrame.Size = UDim2.new(1, 0, 0, 44)
 headerFrame.BackgroundTransparency = 1
@@ -366,7 +360,6 @@ closeBtn.Size = UDim2.new(0, 28, 0, 28)
 closeBtn.Position = UDim2.new(1, -30, 0, 8)
 closeBtn.Parent = headerFrame
 
--- Scroll interno
 local scrollFrame = Instance.new("ScrollingFrame")
 scrollFrame.BackgroundTransparency = 1
 scrollFrame.BorderSizePixel = 0
@@ -387,7 +380,6 @@ uiListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 uiListLayout.Parent = scrollFrame
 
--- Alça de redimensionamento
 local resizeHandle = Instance.new("Frame")
 resizeHandle.Size = UDim2.new(0, 14, 0, 14)
 resizeHandle.AnchorPoint = Vector2.new(1, 1)
@@ -706,6 +698,7 @@ local dragStartPos = nil
 local dragStartFrame = nil
 local isDrag = false
 local minDragDistance = 3
+local resizing = false
 
 local function isMouseOverScrollFrame(mousePos)
     if scrollFrame.Visible and scrollFrame.AbsolutePosition and scrollFrame.AbsoluteSize then
@@ -752,8 +745,4 @@ local function startDrag(input)
     end
 end
 
-mainFrame.InputBegan:Connect(startDrag)
-
-UserInputService.InputChanged:Connect(function(input)
-    if resizing then return end
-    if draggingMenu and (input.UserInputType == Enum
+mainFrame.InputBegan:Connect(startDrag
