@@ -1,24 +1,19 @@
 --[[
-    Aimbot + ESP + AntiKick (FURTIVO - SEM FLY)
+    Aimbot + ESP + AntiKick (SEM FLY)
     Créditos: JV STORE | ig: jaovt.x7
+    Compatível com PC e Mobile
 ]]
 
--- ===== LIMPEZA DE EXECUÇÕES ANTERIORES =====
+-- ===== LIMPEZA =====
 local function cleanupPreviousInstances()
     local coreGui = game:GetService("CoreGui")
     local lighting = game:GetService("Lighting")
-
-    for _, guiName in ipairs({"JV_Notifications", "BlurLoading", "JV_Loading", "JV_Menu", "AntiKickNotification"}) do
-        local existing = coreGui:FindFirstChild(guiName)
-        if existing then
-            pcall(function() existing:Destroy() end)
-        end
+    for _, name in ipairs({"JV_Notifications", "BlurLoading", "JV_Loading", "JV_Menu", "AntiKickNotification"}) do
+        local ex = coreGui:FindFirstChild(name)
+        if ex then pcall(function() ex:Destroy() end) end
     end
-
-    for _, effect in ipairs(lighting:GetChildren()) do
-        if effect:IsA("BlurEffect") and effect.Name == "JV_LoadingBlur" then
-            effect:Destroy()
-        end
+    for _, e in ipairs(lighting:GetChildren()) do
+        if e:IsA("BlurEffect") and e.Name == "JV_LoadingBlur" then e:Destroy() end
     end
 end
 cleanupPreviousInstances()
@@ -37,7 +32,7 @@ local localPlayer = Players.LocalPlayer
 local Cam = Workspace.CurrentCamera
 local localChar = localPlayer.Character
 
--- ===== VARIÁVEIS GLOBAIS =====
+-- ===== VARIÁVEIS =====
 local fov = 57.5
 local fovOpacity = 0.8
 local fovThickness = 2.4
@@ -57,10 +52,8 @@ local FOVring = nil
 local espObjects = {}
 local mainLoopConn = nil
 local scriptIniciado = false
-
 local antiKickReady = false
 local kickAvoidCount = 0
-
 local interactiveAreas = {}
 
 -- ===== NOTIFICAÇÕES =====
@@ -70,121 +63,106 @@ notificationGui.ResetOnSpawn = false
 notificationGui.Parent = CoreGui
 
 local function showNotification(text, color, duration)
-    local notifFrame = Instance.new("Frame")
-    notifFrame.Size = UDim2.new(0, 280, 0, 40)
-    notifFrame.Position = UDim2.new(0.5, -140, 0, 20)
-    notifFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    notifFrame.BorderSizePixel = 0
-    notifFrame.BackgroundTransparency = 0.1
-    notifFrame.Parent = notificationGui
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = notifFrame
-
-    local label = Instance.new("TextLabel")
-    label.Text = text
-    label.Font = Enum.Font.SourceSansSemibold
-    label.TextSize = 15
-    label.TextColor3 = color or Color3.fromRGB(255, 255, 255)
-    label.BackgroundTransparency = 1
-    label.Size = UDim2.new(1, -16, 1, 0)
-    label.Position = UDim2.new(0, 8, 0, 0)
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Parent = notifFrame
-
-    notifFrame.Position = UDim2.new(0.5, -140, 0, -40)
-    TweenService:Create(notifFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back), {Position = UDim2.new(0.5, -140, 0, 20)}):Play()
-
+    local nf = Instance.new("Frame")
+    nf.Size = UDim2.new(0, 280, 0, 40)
+    nf.Position = UDim2.new(0.5, -140, 0, -40)
+    nf.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    nf.BorderSizePixel = 0
+    nf.BackgroundTransparency = 0.1
+    nf.Parent = notificationGui
+    local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0, 8); c.Parent = nf
+    local lb = Instance.new("TextLabel")
+    lb.Text = text
+    lb.Font = Enum.Font.SourceSansSemibold
+    lb.TextSize = 15
+    lb.TextColor3 = color or Color3.fromRGB(255, 255, 255)
+    lb.BackgroundTransparency = 1
+    lb.Size = UDim2.new(1, -16, 1, 0)
+    lb.Position = UDim2.new(0, 8, 0, 0)
+    lb.TextXAlignment = Enum.TextXAlignment.Left
+    lb.Parent = nf
+    TweenService:Create(nf, TweenInfo.new(0.3, Enum.EasingStyle.Back), {Position = UDim2.new(0.5, -140, 0, 20)}):Play()
     task.delay(duration or 2, function()
-        TweenService:Create(notifFrame, TweenInfo.new(0.2), {BackgroundTransparency = 1}):Play()
-        TweenService:Create(label, TweenInfo.new(0.2), {TextTransparency = 1}):Play()
-        task.wait(0.2)
-        notifFrame:Destroy()
+        TweenService:Create(nf, TweenInfo.new(0.2), {BackgroundTransparency = 1}):Play()
+        TweenService:Create(lb, TweenInfo.new(0.2), {TextTransparency = 1}):Play()
+        task.wait(0.2); nf:Destroy()
     end)
 end
 
 showNotification("🟨 Carregando Script...", Color3.fromRGB(255, 255, 0), 2)
 
--- ===== ANTI-KICK FURTIVO =====
+-- ===== ANTI-KICK =====
 task.spawn(function()
     pcall(function()
-        local function createAntiKickNotification(title, message)
+        local function notif(title, message)
             local gui = Instance.new("ScreenGui")
             gui.Name = "AntiKickNotification"
             gui.ResetOnSpawn = false
             gui.Parent = CoreGui
-
-            local frame = Instance.new("Frame")
-            frame.Size = UDim2.new(0, 250, 0, 100)
-            frame.Position = UDim2.new(1, -260, 1, -110)
-            frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-            frame.BorderSizePixel = 0
-            frame.BackgroundTransparency = 0.2
-            frame.Parent = gui
-
-            local corner = Instance.new("UICorner")
-            corner.CornerRadius = UDim.new(0, 8)
-            corner.Parent = frame
-
-            local titleLbl = Instance.new("TextLabel")
-            titleLbl.Text = title
-            titleLbl.Font = Enum.Font.SourceSansBold
-            titleLbl.TextSize = 18
-            titleLbl.TextColor3 = Color3.fromRGB(255, 85, 0)
-            titleLbl.BackgroundTransparency = 1
-            titleLbl.Size = UDim2.new(1, -10, 0, 25)
-            titleLbl.Position = UDim2.new(0, 5, 0, 5)
-            titleLbl.TextXAlignment = Enum.TextXAlignment.Left
-            titleLbl.Parent = frame
-
-            local msg = Instance.new("TextLabel")
-            msg.Text = message
-            msg.Font = Enum.Font.SourceSans
-            msg.TextSize = 16
-            msg.TextColor3 = Color3.fromRGB(255, 255, 255)
-            msg.BackgroundTransparency = 1
-            msg.Size = UDim2.new(1, -10, 1, -35)
-            msg.Position = UDim2.new(0, 5, 0, 30)
-            msg.TextXAlignment = Enum.TextXAlignment.Left
-            msg.TextWrapped = true
-            msg.Parent = frame
-
+            local fr = Instance.new("Frame")
+            fr.Size = UDim2.new(0, 250, 0, 100)
+            fr.Position = UDim2.new(1, -260, 1, -110)
+            fr.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+            fr.BorderSizePixel = 0
+            fr.BackgroundTransparency = 0.2
+            fr.Parent = gui
+            local co = Instance.new("UICorner"); co.CornerRadius = UDim.new(0, 8); co.Parent = fr
+            local t = Instance.new("TextLabel")
+            t.Text = title
+            t.Font = Enum.Font.SourceSansBold
+            t.TextSize = 18
+            t.TextColor3 = Color3.fromRGB(255, 85, 0)
+            t.BackgroundTransparency = 1
+            t.Size = UDim2.new(1, -10, 0, 25)
+            t.Position = UDim2.new(0, 5, 0, 5)
+            t.TextXAlignment = Enum.TextXAlignment.Left
+            t.Parent = fr
+            local m = Instance.new("TextLabel")
+            m.Text = message
+            m.Font = Enum.Font.SourceSans
+            m.TextSize = 16
+            m.TextColor3 = Color3.fromRGB(255, 255, 255)
+            m.BackgroundTransparency = 1
+            m.Size = UDim2.new(1, -10, 1, -35)
+            m.Position = UDim2.new(0, 5, 0, 30)
+            m.TextXAlignment = Enum.TextXAlignment.Left
+            m.TextWrapped = true
+            m.Parent = fr
             task.delay(4, function() gui:Destroy() end)
         end
 
         if hookmetamethod and getnamecallmethod then
-            local oldNamecall
-            oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+            local old
+            old = hookmetamethod(game, "__namecall", function(self, ...)
                 local method = getnamecallmethod()
                 if method and method:lower() == "kick" and self == localPlayer then
                     kickAvoidCount = kickAvoidCount + 1
-                    createAntiKickNotification("🛡️ Kick Bloqueado", "Total: " .. tostring(kickAvoidCount))
+                    notif("🛡️ Kick Bloqueado", "Total: " .. tostring(kickAvoidCount))
                     return nil
                 end
-                return oldNamecall(self, ...)
+                return old(self, ...)
             end)
         end
 
-        if hookmetamethod and getnamecallmethod then
-            local oldIndex
-            oldIndex = hookmetamethod(game, "__index", function(self, key)
+        if hookmetamethod then
+            local oldIdx
+            oldIdx = hookmetamethod(game, "__index", function(self, key)
                 if key == "Teleport" and self == TeleportService then
                     return function(...)
-                        createAntiKickNotification("🚫 Teleporte Bloqueado", "Tentativa rejeitada.")
+                        notif("🚫 Teleporte Bloqueado", "Tentativa rejeitada.")
                         return nil
                     end
                 end
-                return oldIndex(self, key)
+                return oldIdx(self, key)
             end)
         end
 
         antiKickReady = true
-        createAntiKickNotification("✅ Anti-Kick Ativo", "Protegido contra kicks e teleportes.")
+        notif("✅ Anti-Kick Ativo", "Protegido contra kicks e teleportes.")
         task.wait(3)
-        createAntiKickNotification("📢 Créditos", "@joaovictorbjj / @jaovt.x7")
+        notif("📢 Créditos", "@joaovictorbjj / @jaovt.x7")
         task.wait(2)
-        createAntiKickNotification("📋 Instagram", "Perfil copiado para a área de transferência")
+        notif("📋 Instagram", "Perfil copiado")
         pcall(function() setclipboard("ig: @joaovictorbjj") end)
     end)
 end)
@@ -193,79 +171,53 @@ end)
 local function getPlayerTeam(player)
     local character = player.Character
     if not character then return nil end
-
     local team = player.Team
     if team then return team.Name end
-
     for _, child in ipairs(character:GetChildren()) do
         if child:IsA("Accessory") or child:IsA("Hat") then
             local handle = child:FindFirstChild("Handle")
             if handle and handle:FindFirstChild("BillboardGui") then
-                local teamLabel = handle.BillboardGui:FindFirstChild("TeamLabel")
-                if teamLabel and teamLabel:IsA("TextLabel") then
-                    return teamLabel.Text
-                end
+                local tl = handle.BillboardGui:FindFirstChild("TeamLabel")
+                if tl and tl:IsA("TextLabel") then return tl.Text end
             end
         end
     end
-
     local colors = {}
-    local parts = {"Head", "Torso", "UpperTorso", "LowerTorso", "HumanoidRootPart"}
-    for _, partName in ipairs(parts) do
-        local part = character:FindFirstChild(partName)
+    for _, pn in ipairs({"Head","Torso","UpperTorso","LowerTorso","HumanoidRootPart"}) do
+        local part = character:FindFirstChild(pn)
         if part and part:IsA("BasePart") then
-            local color = part.BrickColor
-            if color then table.insert(colors, color.Name) end
+            local col = part.BrickColor
+            if col then table.insert(colors, col.Name) end
         end
     end
-
     if #colors > 0 then
-        local colorCount = {}
-        for _, color in ipairs(colors) do
-            colorCount[color] = (colorCount[color] or 0) + 1
-        end
-        local mostCommon = nil
-        local maxCount = 0
-        for color, count in pairs(colorCount) do
-            if count > maxCount then
-                maxCount = count
-                mostCommon = color
-            end
-        end
-        if mostCommon then
-            local teamColors = {
-                ["Bright red"] = "Vermelho",
-                ["Really red"] = "Vermelho",
-                ["Bright blue"] = "Azul",
-                ["Navy blue"] = "Azul",
-                ["Bright green"] = "Verde",
-                ["Bright yellow"] = "Amarelo"
-            }
-            return teamColors[mostCommon] or mostCommon
+        local cnt = {}
+        for _, c in ipairs(colors) do cnt[c] = (cnt[c] or 0) + 1 end
+        local mc, mx = nil, 0
+        for c, n in pairs(cnt) do if n > mx then mx = n; mc = c end end
+        if mc then
+            local tm = { ["Bright red"]="Vermelho", ["Really red"]="Vermelho", ["Bright blue"]="Azul", ["Navy blue"]="Azul", ["Bright green"]="Verde", ["Bright yellow"]="Amarelo" }
+            return tm[mc] or mc
         end
     end
-
-    local attributes = player:GetAttributes()
-    for attr, value in pairs(attributes) do
+    local attrs = player:GetAttributes()
+    for attr, val in pairs(attrs) do
         if string.lower(attr):find("team") or string.lower(attr):find("time") then
-            return tostring(value)
+            return tostring(val)
         end
     end
-
     return "Espectador"
 end
 
 local function isAlly(player)
     if player == localPlayer then return true end
-    local myTeam = getPlayerTeam(localPlayer)
-    local theirTeam = getPlayerTeam(player)
-    if myTeam and theirTeam and myTeam == theirTeam then
-        return true
-    end
+    local mt = getPlayerTeam(localPlayer)
+    local tt = getPlayerTeam(player)
+    if mt and tt and mt == tt then return true end
     return false
 end
 
--- ===== INTERFACE DO MENU =====
+-- ===== MENU =====
 local menuGui = Instance.new("ScreenGui")
 menuGui.Name = "JV_Menu"
 menuGui.ResetOnSpawn = false
@@ -278,12 +230,10 @@ mainFrame.BorderSizePixel = 0
 mainFrame.Size = UDim2.new(0, 270, 0, 400)
 mainFrame.Position = UDim2.new(0.5, -135, 0.5, -200)
 mainFrame.Visible = false
+mainFrame.Active = true
 mainFrame.Parent = menuGui
 
-local mainCorner = Instance.new("UICorner")
-mainCorner.CornerRadius = UDim.new(0, 12)
-mainCorner.Parent = mainFrame
-
+local mainCorner = Instance.new("UICorner"); mainCorner.CornerRadius = UDim.new(0, 12); mainCorner.Parent = mainFrame
 local mainStroke = Instance.new("UIStroke")
 mainStroke.Color = Color3.fromRGB(255, 255, 255)
 mainStroke.Transparency = 0.7
@@ -302,16 +252,12 @@ jvButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 jvButton.Visible = false
 jvButton.ZIndex = 10
 jvButton.Parent = mainFrame
-
-local jvCorner = Instance.new("UICorner")
-jvCorner.CornerRadius = UDim.new(0, 12)
-jvCorner.Parent = jvButton
-
-local jvStroke = Instance.new("UIStroke")
-jvStroke.Color = Color3.fromRGB(255, 255, 255)
-jvStroke.Transparency = 0.7
-jvStroke.Thickness = 1
-jvStroke.Parent = jvButton
+local jvC = Instance.new("UICorner"); jvC.CornerRadius = UDim.new(0, 12); jvC.Parent = jvButton
+local jvS = Instance.new("UIStroke")
+jvS.Color = Color3.fromRGB(255, 255, 255)
+jvS.Transparency = 0.7
+jvS.Thickness = 1
+jvS.Parent = jvButton
 
 local headerFrame = Instance.new("Frame")
 headerFrame.Size = UDim2.new(1, 0, 0, 44)
@@ -387,11 +333,9 @@ resizeHandle.Position = UDim2.new(1, -6, 1, -6)
 resizeHandle.BackgroundColor3 = Color3.fromRGB(120, 120, 120)
 resizeHandle.BorderSizePixel = 0
 resizeHandle.Parent = mainFrame
-local resizeCorner = Instance.new("UICorner")
-resizeCorner.CornerRadius = UDim.new(0, 3)
-resizeCorner.Parent = resizeHandle
+local rC = Instance.new("UICorner"); rC.CornerRadius = UDim.new(0, 3); rC.Parent = resizeHandle
 
--- ===== HELPERS DE UI =====
+-- ===== HELPERS UI =====
 local function addSectionLabel(text)
     local lbl = Instance.new("TextLabel")
     lbl.Size = UDim2.new(1, -16, 0, 18)
@@ -406,188 +350,159 @@ local function addSectionLabel(text)
 end
 
 local function createToggle(name, default, callback)
-    local toggleFrame = Instance.new("Frame")
-    toggleFrame.Size = UDim2.new(1, -16, 0, 26)
-    toggleFrame.BackgroundTransparency = 1
-    toggleFrame.Parent = scrollFrame
+    local tf = Instance.new("Frame")
+    tf.Size = UDim2.new(1, -16, 0, 26)
+    tf.BackgroundTransparency = 1
+    tf.Parent = scrollFrame
 
-    local label = Instance.new("TextLabel")
-    label.Text = name
-    label.Font = Enum.Font.SourceSans
-    label.TextSize = 13
-    label.TextColor3 = Color3.fromRGB(255, 255, 255)
-    label.BackgroundTransparency = 1
-    label.Size = UDim2.new(1, -56, 1, 0)
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Parent = toggleFrame
+    local lbl = Instance.new("TextLabel")
+    lbl.Text = name
+    lbl.Font = Enum.Font.SourceSans
+    lbl.TextSize = 13
+    lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+    lbl.BackgroundTransparency = 1
+    lbl.Size = UDim2.new(1, -56, 1, 0)
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Parent = tf
 
-    local switchBg = Instance.new("Frame")
-    switchBg.Size = UDim2.new(0, 40, 0, 20)
-    switchBg.Position = UDim2.new(1, -40, 0.5, -10)
-    switchBg.BackgroundColor3 = default and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(70, 70, 70)
-    switchBg.BorderSizePixel = 0
-    switchBg.Parent = toggleFrame
-    local switchCorner = Instance.new("UICorner")
-    switchCorner.CornerRadius = UDim.new(1, 0)
-    switchCorner.Parent = switchBg
+    local sb = Instance.new("Frame")
+    sb.Size = UDim2.new(0, 40, 0, 20)
+    sb.Position = UDim2.new(1, -40, 0.5, -10)
+    sb.BackgroundColor3 = default and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(70, 70, 70)
+    sb.BorderSizePixel = 0
+    sb.Parent = tf
+    local sc = Instance.new("UICorner"); sc.CornerRadius = UDim.new(1, 0); sc.Parent = sb
 
     local thumb = Instance.new("Frame")
     thumb.Size = UDim2.new(0, 16, 0, 16)
     thumb.Position = default and UDim2.new(0, 21, 0, 2) or UDim2.new(0, 2, 0, 2)
     thumb.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     thumb.BorderSizePixel = 0
-    thumb.Parent = switchBg
-    local thumbCorner = Instance.new("UICorner")
-    thumbCorner.CornerRadius = UDim.new(1, 0)
-    thumbCorner.Parent = thumb
+    thumb.Parent = sb
+    local tc = Instance.new("UICorner"); tc.CornerRadius = UDim.new(1, 0); tc.Parent = thumb
 
-    local switchBtn = Instance.new("TextButton")
-    switchBtn.Size = UDim2.new(1, 0, 1, 0)
-    switchBtn.BackgroundTransparency = 1
-    switchBtn.Text = ""
-    switchBtn.ZIndex = 2
-    switchBtn.Parent = switchBg
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, 0, 1, 0)
+    btn.BackgroundTransparency = 1
+    btn.Text = ""
+    btn.ZIndex = 2
+    btn.Parent = sb
 
     local value = default
-    local function updateState()
+    local function toggle()
         value = not value
         callback(value)
-        local targetPos = value and UDim2.new(0, 21, 0, 2) or UDim2.new(0, 2, 0, 2)
-        local targetColor = value and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(70, 70, 70)
-        TweenService:Create(thumb, TweenInfo.new(0.15), {Position = targetPos}):Play()
-        TweenService:Create(switchBg, TweenInfo.new(0.15), {BackgroundColor3 = targetColor}):Play()
+        local tp = value and UDim2.new(0, 21, 0, 2) or UDim2.new(0, 2, 0, 2)
+        local tcol = value and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(70, 70, 70)
+        TweenService:Create(thumb, TweenInfo.new(0.15), {Position = tp}):Play()
+        TweenService:Create(sb, TweenInfo.new(0.15), {BackgroundColor3 = tcol}):Play()
     end
 
-    switchBtn.MouseButton1Click:Connect(updateState)
+    btn.MouseButton1Click:Connect(toggle)
 
-    table.insert(interactiveAreas, toggleFrame)
-    return toggleFrame
+    table.insert(interactiveAreas, tf)
+    return tf
 end
 
 local function createSlider(name, min, max, initial, callback)
-    local sliderFrame = Instance.new("Frame")
-    sliderFrame.Size = UDim2.new(1, -16, 0, 36)
-    sliderFrame.BackgroundTransparency = 1
-    sliderFrame.Parent = scrollFrame
+    local sf = Instance.new("Frame")
+    sf.Size = UDim2.new(1, -16, 0, 36)
+    sf.BackgroundTransparency = 1
+    sf.Parent = scrollFrame
 
-    local label = Instance.new("TextLabel")
-    label.Text = name .. ": " .. string.format("%.1f", initial)
-    label.Font = Enum.Font.SourceSans
-    label.TextSize = 12
-    label.TextColor3 = Color3.fromRGB(255, 255, 255)
-    label.BackgroundTransparency = 1
-    label.Size = UDim2.new(1, 0, 0, 14)
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Parent = sliderFrame
+    local lbl = Instance.new("TextLabel")
+    lbl.Text = name .. ": " .. string.format("%.1f", initial)
+    lbl.Font = Enum.Font.SourceSans
+    lbl.TextSize = 12
+    lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+    lbl.BackgroundTransparency = 1
+    lbl.Size = UDim2.new(1, 0, 0, 14)
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Parent = sf
 
-    local trackBg = Instance.new("Frame")
-    trackBg.Size = UDim2.new(1, 0, 0, 5)
-    trackBg.Position = UDim2.new(0, 0, 0, 20)
-    trackBg.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-    trackBg.BorderSizePixel = 0
-    trackBg.Parent = sliderFrame
-    local trackCorner = Instance.new("UICorner")
-    trackCorner.CornerRadius = UDim.new(0, 3)
-    trackCorner.Parent = trackBg
+    local tb = Instance.new("Frame")
+    tb.Size = UDim2.new(1, 0, 0, 5)
+    tb.Position = UDim2.new(0, 0, 0, 20)
+    tb.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    tb.BorderSizePixel = 0
+    tb.Parent = sf
+    local tbc = Instance.new("UICorner"); tbc.CornerRadius = UDim.new(0, 3); tbc.Parent = tb
 
-    local trackFill = Instance.new("Frame")
-    trackFill.Size = UDim2.new((initial - min) / (max - min), 0, 1, 0)
-    trackFill.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-    trackFill.BorderSizePixel = 0
-    trackFill.Parent = trackBg
-    local fillCorner = Instance.new("UICorner")
-    fillCorner.CornerRadius = UDim.new(0, 3)
-    fillCorner.Parent = trackFill
+    local fill = Instance.new("Frame")
+    fill.Size = UDim2.new((initial - min) / (max - min), 0, 1, 0)
+    fill.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+    fill.BorderSizePixel = 0
+    fill.Parent = tb
+    local fc = Instance.new("UICorner"); fc.CornerRadius = UDim.new(0, 3); fc.Parent = fill
 
     local thumb = Instance.new("Frame")
     thumb.Size = UDim2.new(0, 12, 0, 12)
     thumb.Position = UDim2.new((initial - min) / (max - min), -6, 0.5, -6)
     thumb.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     thumb.BorderSizePixel = 0
-    thumb.Parent = trackBg
-    local thumbCorner = Instance.new("UICorner")
-    thumbCorner.CornerRadius = UDim.new(1, 0)
-    thumbCorner.Parent = thumb
+    thumb.Parent = tb
+    local thc = Instance.new("UICorner"); thc.CornerRadius = UDim.new(1, 0); thc.Parent = thumb
 
-    local sliderVal = initial
-
-    local function setValue(xFraction)
-        local val = min + xFraction * (max - min)
-        val = math.clamp(val, min, max)
-        sliderVal = val
-        label.Text = name .. ": " .. string.format("%.1f", val)
-        trackFill.Size = UDim2.new((val - min) / (max - min), 0, 1, 0)
+    local function setValue(frac)
+        local val = math.clamp(min + frac * (max - min), min, max)
+        lbl.Text = name .. ": " .. string.format("%.1f", val)
+        fill.Size = UDim2.new((val - min) / (max - min), 0, 1, 0)
         thumb.Position = UDim2.new((val - min) / (max - min), -6, 0.5, -6)
         callback(val)
     end
 
     local dragging = false
-    local function updateFromMouse(input)
-        local mousePos = input.Position
-        local relativeX = mousePos.X - trackBg.AbsolutePosition.X
-        local fraction = math.clamp(relativeX / trackBg.AbsoluteSize.X, 0, 1)
-        setValue(fraction)
+    local function update(input)
+        local relX = input.Position.X - tb.AbsolutePosition.X
+        local frac = math.clamp(relX / tb.AbsoluteSize.X, 0, 1)
+        setValue(frac)
     end
 
     thumb.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
-            updateFromMouse(input)
+            update(input)
         end
     end)
-    trackBg.InputBegan:Connect(function(input)
+    tb.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
-            updateFromMouse(input)
+            update(input)
         end
     end)
-
     UserInputService.InputChanged:Connect(function(input)
         if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            updateFromMouse(input)
+            update(input)
         end
     end)
-
     UserInputService.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = false
         end
     end)
 
-    table.insert(interactiveAreas, sliderFrame)
-    return sliderFrame
+    table.insert(interactiveAreas, sf)
+    return sf
 end
 
--- ===== CRIAÇÃO DOS CONTROLES =====
+-- ===== CONTROLES =====
 addSectionLabel("CONTROLES")
-createToggle("Aimbot", true, function(val) aimbotAtivo = val end)
-createToggle("ESP", true, function(val) espAtivo = val end)
-createToggle("ESP Aliados", true, function(val) espAliados = val end)
-createToggle("ESP Inimigos", true, function(val) espInimigos = val end)
-createToggle("Box", true, function(val) boxAtivo = val end)
-createToggle("Tracer", true, function(val) tracerAtivo = val end)
-createToggle("Distância", true, function(val) distanciaAtivo = val end)
+createToggle("Aimbot", true, function(v) aimbotAtivo = v end)
+createToggle("ESP", true, function(v) espAtivo = v end)
+createToggle("ESP Aliados", true, function(v) espAliados = v end)
+createToggle("ESP Inimigos", true, function(v) espInimigos = v end)
+createToggle("Box", true, function(v) boxAtivo = v end)
+createToggle("Tracer", true, function(v) tracerAtivo = v end)
+createToggle("Distância", true, function(v) distanciaAtivo = v end)
 
 addSectionLabel("CONFIGURAÇÕES")
-createSlider("FOV Size", 10, 200, fov, function(val)
-    fov = val
-    if FOVring then FOVring.Radius = val end
-end)
-createSlider("FOV Visibility", 0, 1, fovOpacity, function(val)
-    fovOpacity = val
-end)
-createSlider("FOV Thickness", 1, 6, fovThickness, function(val)
-    fovThickness = val
-    if FOVring then FOVring.Thickness = val end
-end)
-createSlider("Box Visibility", 0, 1, boxOpacity, function(val)
-    boxOpacity = val
-end)
-createSlider("Tracer Visibility", 0, 1, tracerOpacity, function(val)
-    tracerOpacity = val
-end)
+createSlider("FOV Size", 10, 200, fov, function(v) fov = v; if FOVring then FOVring.Radius = v end end)
+createSlider("FOV Visibility", 0, 1, fovOpacity, function(v) fovOpacity = v end)
+createSlider("FOV Thickness", 1, 6, fovThickness, function(v) fovThickness = v; if FOVring then FOVring.Thickness = v end end)
+createSlider("Box Visibility", 0, 1, boxOpacity, function(v) boxOpacity = v end)
+createSlider("Tracer Visibility", 0, 1, tracerOpacity, function(v) tracerOpacity = v end)
 
--- ===== VARIÁVEIS DE CONTROLE DO MENU =====
+-- ===== MENU COLLAPSE =====
 local menuCollapsed = false
 local menuAnimating = false
 local expandedSize = UDim2.new(0, 270, 0, 400)
@@ -598,140 +513,114 @@ local collapsedPos = UDim2.new(0.5, -18, 0, 10)
 local function setCollapsed(collapsed, instant)
     if menuAnimating and not instant then return end
     menuAnimating = true
-
-    local targetSize = collapsed and collapsedSize or expandedSize
-    local targetPos = collapsed and collapsedPos or expandedPos
-
+    local ts = collapsed and collapsedSize or expandedSize
+    local tp = collapsed and collapsedPos or expandedPos
     headerFrame.Visible = not collapsed
     scrollFrame.Visible = not collapsed
     resizeHandle.Visible = not collapsed
     creditsLabel.Visible = not collapsed
     jvButton.Visible = collapsed
-
-    mainFrame.Active = not collapsed
-
     if instant then
-        mainFrame.Size = targetSize
-        mainFrame.Position = targetPos
+        mainFrame.Size = ts
+        mainFrame.Position = tp
         menuCollapsed = collapsed
         menuAnimating = false
     else
-        TweenService:Create(mainFrame, TweenInfo.new(0.15), {Size = targetSize, Position = targetPos}):Play()
+        TweenService:Create(mainFrame, TweenInfo.new(0.15), {Size = ts, Position = tp}):Play()
         task.wait(0.15)
         menuCollapsed = collapsed
         menuAnimating = false
     end
 end
 
-jvButton.Activated:Connect(function()
-    setCollapsed(false, false)
-end)
+jvButton.Activated:Connect(function() setCollapsed(false, false) end)
+minimizeBtn.Activated:Connect(function() setCollapsed(true, false) end)
 
-minimizeBtn.Activated:Connect(function()
-    setCollapsed(true, false)
-end)
-
--- ===== FULL CLEANUP =====
+-- ===== CLEANUP / CLOSE =====
 local fullCleanup = function() end
 
 local function requestClose()
-    local confirmGui = Instance.new("ScreenGui")
-    confirmGui.Parent = CoreGui
-    local confirmFrame = Instance.new("Frame")
-    confirmFrame.Size = UDim2.new(0, 240, 0, 100)
-    confirmFrame.Position = UDim2.new(0.5, -120, 0.5, -50)
-    confirmFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    confirmFrame.BackgroundTransparency = 0.05
-    confirmFrame.BorderSizePixel = 0
-    confirmFrame.Parent = confirmGui
-
-    local confirmCorner = Instance.new("UICorner")
-    confirmCorner.CornerRadius = UDim.new(0, 12)
-    confirmCorner.Parent = confirmFrame
-
-    local confirmText = Instance.new("TextLabel")
-    confirmText.Text = "Deseja realmente finalizar o script?"
-    confirmText.Font = Enum.Font.SourceSans
-    confirmText.TextSize = 15
-    confirmText.TextColor3 = Color3.fromRGB(255, 255, 255)
-    confirmText.BackgroundTransparency = 1
-    confirmText.Size = UDim2.new(1, 0, 0, 40)
-    confirmText.Position = UDim2.new(0, 0, 0, 15)
-    confirmText.TextXAlignment = Enum.TextXAlignment.Center
-    confirmText.Parent = confirmFrame
-
-    local yesBtn = Instance.new("TextButton")
-    yesBtn.Text = "Confirmar"
-    yesBtn.Font = Enum.Font.SourceSansBold
-    yesBtn.TextSize = 15
-    yesBtn.TextColor3 = Color3.fromRGB(255, 80, 80)
-    yesBtn.BackgroundTransparency = 1
-    yesBtn.Size = UDim2.new(0, 80, 0, 30)
-    yesBtn.Position = UDim2.new(0, 30, 0, 60)
-    yesBtn.Parent = confirmFrame
-
-    local noBtn = Instance.new("TextButton")
-    noBtn.Text = "Cancelar"
-    noBtn.Font = Enum.Font.SourceSansBold
-    noBtn.TextSize = 15
-    noBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    noBtn.BackgroundTransparency = 1
-    noBtn.Size = UDim2.new(0, 80, 0, 30)
-    noBtn.Position = UDim2.new(0, 130, 0, 60)
-    noBtn.Parent = confirmFrame
-
-    local function closeConfirm(result)
-        confirmGui:Destroy()
-        if result then
-            fullCleanup()
-        end
-    end
-    yesBtn.Activated:Connect(function() closeConfirm(true) end)
-    noBtn.Activated:Connect(function() closeConfirm(false) end)
+    local cg = Instance.new("ScreenGui"); cg.Parent = CoreGui
+    local cf = Instance.new("Frame")
+    cf.Size = UDim2.new(0, 240, 0, 100)
+    cf.Position = UDim2.new(0.5, -120, 0.5, -50)
+    cf.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    cf.BackgroundTransparency = 0.05
+    cf.BorderSizePixel = 0
+    cf.Parent = cg
+    local cc = Instance.new("UICorner"); cc.CornerRadius = UDim.new(0, 12); cc.Parent = cf
+    local ct = Instance.new("TextLabel")
+    ct.Text = "Deseja realmente finalizar o script?"
+    ct.Font = Enum.Font.SourceSans
+    ct.TextSize = 15
+    ct.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ct.BackgroundTransparency = 1
+    ct.Size = UDim2.new(1, 0, 0, 40)
+    ct.Position = UDim2.new(0, 0, 0, 15)
+    ct.TextXAlignment = Enum.TextXAlignment.Center
+    ct.Parent = cf
+    local yb = Instance.new("TextButton")
+    yb.Text = "Confirmar"
+    yb.Font = Enum.Font.SourceSansBold
+    yb.TextSize = 15
+    yb.TextColor3 = Color3.fromRGB(255, 80, 80)
+    yb.BackgroundTransparency = 1
+    yb.Size = UDim2.new(0, 80, 0, 30)
+    yb.Position = UDim2.new(0, 30, 0, 60)
+    yb.Parent = cf
+    local nb = Instance.new("TextButton")
+    nb.Text = "Cancelar"
+    nb.Font = Enum.Font.SourceSansBold
+    nb.TextSize = 15
+    nb.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nb.BackgroundTransparency = 1
+    nb.Size = UDim2.new(0, 80, 0, 30)
+    nb.Position = UDim2.new(0, 130, 0, 60)
+    nb.Parent = cf
+    yb.Activated:Connect(function() cg:Destroy(); fullCleanup() end)
+    nb.Activated:Connect(function() cg:Destroy() end)
 end
 
 closeBtn.Activated:Connect(requestClose)
 
--- ===== ARRASTE E REDIMENSIONAMENTO =====
+-- ===== DRAG / RESIZE =====
 local draggingMenu = false
 local dragStartPos = nil
 local dragStartFrame = nil
 local isDrag = false
 local minDragDistance = 3
 local resizing = false
+local resizeStartY = nil
+local initialHeight = nil
+local minHeight = 300
+local maxHeight = 550
 
-local function isMouseOverScrollFrame(mousePos)
+local function isMouseOverScrollFrame(mp)
     if scrollFrame.Visible and scrollFrame.AbsolutePosition and scrollFrame.AbsoluteSize then
-        local pos = scrollFrame.AbsolutePosition
-        local size = scrollFrame.AbsoluteSize
-        return mousePos.X >= pos.X and mousePos.X <= pos.X + size.X and
-               mousePos.Y >= pos.Y and mousePos.Y <= pos.Y + size.Y
+        local p = scrollFrame.AbsolutePosition
+        local s = scrollFrame.AbsoluteSize
+        return mp.X >= p.X and mp.X <= p.X + s.X and mp.Y >= p.Y and mp.Y <= p.Y + s.Y
     end
     return false
 end
 
 local function startDrag(input)
-    if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
-        local mousePos = input.Position
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        local mp = input.Position
         if resizeHandle.Visible and resizeHandle.AbsolutePosition and resizeHandle.AbsoluteSize then
-            local handlePos = resizeHandle.AbsolutePosition
-            local handleSize = resizeHandle.AbsoluteSize
-            if mousePos.X >= handlePos.X and mousePos.X <= handlePos.X + handleSize.X and
-               mousePos.Y >= handlePos.Y and mousePos.Y <= handlePos.Y + handleSize.Y then
+            local hp = resizeHandle.AbsolutePosition
+            local hs = resizeHandle.AbsoluteSize
+            if mp.X >= hp.X and mp.X <= hp.X + hs.X and mp.Y >= hp.Y and mp.Y <= hp.Y + hs.Y then
                 draggingMenu = false
                 return
             end
         end
-        if isMouseOverScrollFrame(mousePos) then
-            draggingMenu = false
-            return
-        end
+        if isMouseOverScrollFrame(mp) then draggingMenu = false; return end
         for _, area in ipairs(interactiveAreas) do
             if area.Visible and area.AbsolutePosition and area.AbsoluteSize then
-                local pos = area.AbsolutePosition
-                local size = area.AbsoluteSize
-                if mousePos.X >= pos.X and mousePos.X <= pos.X + size.X and
-                   mousePos.Y >= pos.Y and mousePos.Y <= pos.Y + size.Y then
+                local p = area.AbsolutePosition
+                local s = area.AbsoluteSize
+                if mp.X >= p.X and mp.X <= p.X + s.X and mp.Y >= p.Y and mp.Y <= p.Y + s.Y then
                     draggingMenu = false
                     return
                 end
@@ -740,9 +629,439 @@ local function startDrag(input)
         if menuCollapsed then return end
         draggingMenu = true
         isDrag = false
-        dragStartPos = mousePos
+        dragStartPos = mp
         dragStartFrame = mainFrame.Position
     end
 end
 
-mainFrame.InputBegan:Connect(startDrag
+mainFrame.InputBegan:Connect(startDrag)
+
+UserInputService.InputChanged:Connect(function(input)
+    if resizing then return end
+    if draggingMenu and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStartPos
+        if delta.Magnitude > minDragDistance then isDrag = true end
+        if isDrag then
+            local newPos = UDim2.new(dragStartFrame.X.Scale, dragStartFrame.X.Offset + delta.X,
+                                     dragStartFrame.Y.Scale, dragStartFrame.Y.Offset + delta.Y)
+            mainFrame.Position = newPos
+            if menuCollapsed then collapsedPos = newPos else expandedPos = newPos end
+        end
+    end
+    if resizing and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local deltaY = input.Position.Y - resizeStartY
+        local newH = math.clamp(initialHeight + deltaY, minHeight, maxHeight)
+        mainFrame.Size = UDim2.new(0, 270, 0, newH)
+        expandedSize = mainFrame.Size
+        scrollFrame.Size = UDim2.new(1, -16, 0, newH - 52)
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        if draggingMenu and not isDrag then
+            if menuCollapsed then setCollapsed(false, false) end
+        end
+        draggingMenu = false
+        isDrag = false
+        resizing = false
+    end
+end)
+
+resizeHandle.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        resizing = true
+        resizeStartY = input.Position.Y
+        initialHeight = mainFrame.AbsoluteSize.Y
+    end
+end)
+
+-- ===== LOADING =====
+local function showLoading(onComplete)
+    local lg = Instance.new("ScreenGui")
+    lg.Name = "JV_Loading"
+    lg.ResetOnSpawn = false
+    lg.Parent = CoreGui
+
+    local blur = Instance.new("BlurEffect")
+    blur.Name = "JV_LoadingBlur"
+    blur.Size = 24
+    blur.Parent = Lighting
+
+    local overlay = Instance.new("Frame")
+    overlay.Size = UDim2.new(1, 0, 1, 0)
+    overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    overlay.BackgroundTransparency = 0.2
+    overlay.BorderSizePixel = 0
+    overlay.Parent = lg
+
+    local card = Instance.new("Frame")
+    card.Size = UDim2.new(0, 240, 0, 140)
+    card.AnchorPoint = Vector2.new(0.5, 0.5)
+    card.Position = UDim2.new(0.5, 0, 0.5, 0)
+    card.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    card.BackgroundTransparency = 0.15
+    card.BorderSizePixel = 0
+    card.Parent = lg
+    local cc = Instance.new("UICorner"); cc.CornerRadius = UDim.new(0, 10); cc.Parent = card
+    local cs = Instance.new("UIStroke")
+    cs.Color = Color3.fromRGB(255, 255, 255)
+    cs.Transparency = 0.8
+    cs.Thickness = 1
+    cs.Parent = card
+
+    local t = Instance.new("TextLabel")
+    t.Text = "JV STORE"
+    t.Font = Enum.Font.SourceSansBold
+    t.TextSize = 22
+    t.TextColor3 = Color3.fromRGB(255, 255, 255)
+    t.BackgroundTransparency = 1
+    t.Size = UDim2.new(1, 0, 0, 26)
+    t.Position = UDim2.new(0, 0, 0, 18)
+    t.TextXAlignment = Enum.TextXAlignment.Center
+    t.Parent = card
+
+    local s = Instance.new("TextLabel")
+    s.Text = "Inicializando..."
+    s.Font = Enum.Font.SourceSans
+    s.TextSize = 13
+    s.TextColor3 = Color3.fromRGB(200, 200, 200)
+    s.BackgroundTransparency = 1
+    s.Size = UDim2.new(1, 0, 0, 16)
+    s.Position = UDim2.new(0, 0, 0, 44)
+    s.TextXAlignment = Enum.TextXAlignment.Center
+    s.Parent = card
+
+    local pt = Instance.new("Frame")
+    pt.Size = UDim2.new(1, -40, 0, 6)
+    pt.Position = UDim2.new(0, 20, 0, 72)
+    pt.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    pt.BorderSizePixel = 0
+    pt.Parent = card
+    local ptc = Instance.new("UICorner"); ptc.CornerRadius = UDim.new(0, 3); ptc.Parent = pt
+
+    local pf = Instance.new("Frame")
+    pf.Size = UDim2.new(0, 0, 1, 0)
+    pf.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+    pf.BorderSizePixel = 0
+    pf.Parent = pt
+    local pfc = Instance.new("UICorner"); pfc.CornerRadius = UDim.new(0, 3); pfc.Parent = pf
+
+    local finished = false
+    local function finish()
+        if finished then return end
+        finished = true
+        TweenService:Create(card, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+        TweenService:Create(t, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+        TweenService:Create(s, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+        TweenService:Create(pt, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+        TweenService:Create(pf, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+        TweenService:Create(overlay, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+        task.wait(0.3)
+        lg:Destroy()
+        blur:Destroy()
+        onComplete()
+    end
+
+    local tw = TweenService:Create(pf, TweenInfo.new(2.2, Enum.EasingStyle.Linear), {Size = UDim2.new(1, 0, 1, 0)})
+    tw:Play()
+    tw.Completed:Connect(finish)
+    task.delay(3.5, finish)
+end
+
+-- ===== FUNÇÃO PRINCIPAL =====
+local function iniciarScript()
+    if scriptIniciado then return end
+    scriptIniciado = true
+
+    if not Cam then Cam = Workspace.CurrentCamera end
+    if not Cam then
+        repeat task.wait(0.1); Cam = Workspace.CurrentCamera until Cam
+    end
+    if not Cam then return end
+
+    -- Verifica suporte a Drawing
+    local hasDrawing = pcall(function() return Drawing.new("Circle") end)
+
+    if hasDrawing then
+        FOVring = Drawing.new("Circle")
+        FOVring.Visible = true
+        FOVring.Thickness = fovThickness
+        FOVring.Color = Color3.fromRGB(128, 0, 128)
+        FOVring.Filled = false
+        FOVring.Radius = fov
+        FOVring.Position = Cam.ViewportSize / 2
+    end
+
+    local function updateDrawings()
+        if FOVring then
+            FOVring.Position = Cam.ViewportSize / 2
+            FOVring.Radius = fov
+            FOVring.Thickness = fovThickness
+        end
+    end
+
+    local function isPlayerVisible(player)
+        local char = player.Character
+        if not char then return false end
+        local head = char:FindFirstChild("Head")
+        if not head then return false end
+        local params = RaycastParams.new()
+        params.FilterType = Enum.RaycastFilterType.Blacklist
+        params.FilterDescendantsInstances = { localChar, char }
+        local result = Workspace:Raycast(Cam.CFrame.Position, (head.Position - Cam.CFrame.Position), params)
+        return result == nil
+    end
+
+    local function lookAt(targetPos)
+        local cameraPos = Cam.CFrame.Position
+        local lookVector = (targetPos - cameraPos).unit
+        Cam.CFrame = CFrame.new(cameraPos, cameraPos + lookVector)
+    end
+
+    local function getClosestPlayerInFOV(trg_part)
+        local nearest, last = nil, math.huge
+        local mousePos = Cam.ViewportSize / 2
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= localPlayer then
+                local ally = isAlly(player)
+                if (ally and not espAliados) or (not ally and not espInimigos) then continue end
+                local char = player.Character
+                if char then
+                    local part = char:FindFirstChild(trg_part)
+                    if part then
+                        local ePos, onScreen = Cam:WorldToViewportPoint(part.Position)
+                        local dist = (Vector2.new(ePos.X, ePos.Y) - mousePos).Magnitude
+                        if onScreen and dist < fov and dist < last and isPlayerVisible(player) then
+                            last = dist
+                            nearest = player
+                        end
+                    end
+                end
+            end
+        end
+        return nearest
+    end
+
+    local function createESP(player)
+        if espObjects[player] then return end
+        if not hasDrawing then return end
+        local data = {
+            box = Drawing.new("Square"),
+            tracer = Drawing.new("Line"),
+            distanceText = Drawing.new("Text")
+        }
+        data.box.Visible = false
+        data.box.Thickness = 1.5
+        data.box.Transparency = 1 - boxOpacity
+        data.box.Filled = false
+
+        data.tracer.Visible = false
+        data.tracer.Thickness = 1.5
+        data.tracer.Transparency = 1 - tracerOpacity
+
+        data.distanceText.Visible = false
+        data.distanceText.Size = 14
+        data.distanceText.Center = true
+        data.distanceText.Transparency = 0
+        data.distanceText.Font = 0
+
+        local ally = isAlly(player)
+        local color = ally and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+        data.box.Color = color
+        data.tracer.Color = color
+        data.distanceText.Color = color
+
+        espObjects[player] = data
+    end
+
+    local function removeESP(player)
+        local data = espObjects[player]
+        if data then
+            if data.box then data.box:Remove() end
+            if data.tracer then data.tracer:Remove() end
+            if data.distanceText then data.distanceText:Remove() end
+            espObjects[player] = nil
+        end
+    end
+
+    local function updateESP()
+        if not espAtivo then
+            for _, data in pairs(espObjects) do
+                if data.box then data.box.Visible = false end
+                if data.tracer then data.tracer.Visible = false end
+                if data.distanceText then data.distanceText.Visible = false end
+            end
+            return
+        end
+        local viewport = Cam.ViewportSize
+        local bottomCenter = Vector2.new(viewport.X / 2, viewport.Y)
+        for player, data in pairs(espObjects) do
+            local char = player.Character
+            if not char or not player.Parent then
+                removeESP(player)
+                continue
+            end
+            local ally = isAlly(player)
+            if (ally and not espAliados) or (not ally and not espInimigos) then
+                if data.box then data.box.Visible = false end
+                if data.tracer then data.tracer.Visible = false end
+                if data.distanceText then data.distanceText.Visible = false end
+                continue
+            end
+            local head = char:FindFirstChild("Head")
+            local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
+                       or char:FindFirstChild("LowerTorso") or char:FindFirstChild("HumanoidRootPart")
+            if head and torso then
+                local headPos, headVis = Cam:WorldToViewportPoint(head.Position)
+                local torsoPos = Cam:WorldToViewportPoint(torso.Position)
+                if headVis then
+                    local distance = math.floor((Cam.CFrame.Position - head.Position).Magnitude)
+                    local height = math.abs(headPos.Y - torsoPos.Y) * 3.5
+                    local width = height * 0.5
+                    local centerX = headPos.X
+                    local centerY = (headPos.Y + torsoPos.Y) / 2
+
+                    if data.box then
+                        data.box.Visible = boxAtivo
+                        if boxAtivo then
+                            data.box.Size = Vector2.new(width, height)
+                            data.box.Position = Vector2.new(centerX - width / 2, centerY - height / 2)
+                            data.box.Transparency = 1 - boxOpacity
+                        end
+                    end
+                    if data.tracer then
+                        data.tracer.Visible = tracerAtivo
+                        if tracerAtivo then
+                            data.tracer.From = bottomCenter
+                            data.tracer.To = Vector2.new(headPos.X, headPos.Y)
+                            data.tracer.Transparency = 1 - tracerOpacity
+                        end
+                    end
+                    if data.distanceText then
+                        data.distanceText.Visible = distanciaAtivo
+                        if distanciaAtivo then
+                            data.distanceText.Text = tostring(distance) .. "m"
+                            data.distanceText.Position = Vector2.new(headPos.X, headPos.Y + height / 2 + 20)
+                        end
+                    end
+                else
+                    if data.box then data.box.Visible = false end
+                    if data.tracer then data.tracer.Visible = false end
+                    if data.distanceText then data.distanceText.Visible = false end
+                end
+            else
+                if data.box then data.box.Visible = false end
+                if data.tracer then data.tracer.Visible = false end
+                if data.distanceText then data.distanceText.Visible = false end
+            end
+        end
+    end
+
+    local function setupPlayer(player)
+        if player == localPlayer then return end
+        player.CharacterAdded:Connect(function()
+            removeESP(player)
+            task.wait(0.5)
+            createESP(player)
+        end)
+        if player.Character then createESP(player) end
+    end
+
+    for _, player in ipairs(Players:GetPlayers()) do setupPlayer(player) end
+    Players.PlayerAdded:Connect(setupPlayer)
+    Players.PlayerRemoving:Connect(removeESP)
+    localPlayer.CharacterAdded:Connect(function(char)
+        localChar = char
+        task.wait(0.5)
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= localPlayer then
+                removeESP(player)
+                createESP(player)
+            end
+        end
+    end)
+
+    fullCleanup = function()
+        if mainLoopConn then mainLoopConn:Disconnect(); mainLoopConn = nil end
+        if FOVring then FOVring:Remove(); FOVring = nil end
+        for _, data in pairs(espObjects) do
+            if data.box then data.box:Remove() end
+            if data.tracer then data.tracer:Remove() end
+            if data.distanceText then data.distanceText:Remove() end
+        end
+        espObjects = {}
+        if menuGui then menuGui:Destroy() end
+        if notificationGui then notificationGui:Destroy() end
+        pcall(function()
+            local lg = CoreGui:FindFirstChild("JV_Loading")
+            if lg then lg:Destroy() end
+        end)
+        pcall(function()
+            for _, e in ipairs(Lighting:GetChildren()) do
+                if e:IsA("BlurEffect") and e.Name == "JV_LoadingBlur" then e:Destroy() end
+            end
+        end)
+    end
+
+    task.spawn(function()
+        while not antiKickReady do task.wait(0.3) end
+        showNotification("🟩 Anti Kick ativado.", Color3.fromRGB(0, 255, 0), 3)
+        task.wait(3)
+        showNotification("🟩 Menu JV Store carregado.", Color3.fromRGB(0, 255, 0), 2)
+        task.wait(2)
+        showNotification("🟨 Verificando recursos...", Color3.fromRGB(255, 255, 0), 2)
+        task.wait(2)
+        showNotification("🟩 Script iniciado com sucesso.", Color3.fromRGB(0, 255, 0), 2)
+    end)
+
+    UserInputService.InputBegan:Connect(function(input, gpe)
+        if gpe then return end
+        if input.KeyCode == Enum.KeyCode.Delete then
+            fullCleanup()
+        end
+    end)
+
+    mainLoopConn = RunService.RenderStepped:Connect(function()
+        updateDrawings()
+        local baseT = 1 - fovOpacity
+        if FOVring then
+            if aimbotAtivo then
+                local closest = getClosestPlayerInFOV("Head")
+                if closest and closest.Character and closest.Character:FindFirstChild("Head") then
+                    if isPlayerVisible(closest) then
+                        lookAt(closest.Character.Head.Position)
+                    end
+                    local ePos, isVis = Cam:WorldToViewportPoint(closest.Character.Head.Position)
+                    if isVis then
+                        local dist = (Vector2.new(ePos.X, ePos.Y) - Cam.ViewportSize / 2).Magnitude
+                        FOVring.Transparency = math.clamp(baseT + (1 - (dist / fov)) * maxTransparency, 0, 1)
+                    else
+                        FOVring.Transparency = baseT
+                    end
+                else
+                    FOVring.Transparency = baseT
+                end
+            else
+                FOVring.Transparency = baseT
+            end
+        end
+        updateESP()
+    end)
+end
+
+-- ===== SHOW MENU =====
+local function showMenu()
+    mainFrame.Visible = true
+    mainFrame.BackgroundTransparency = 1
+    mainFrame.Position = expandedPos
+    TweenService:Create(mainFrame, TweenInfo.new(0.3), {BackgroundTransparency = 0.05}):Play()
+end
+
+-- ===== INICIALIZAÇÃO =====
+setCollapsed(false, true)
+
+showLoading(function()
+    showMenu()
+    iniciarScript()
+end)
